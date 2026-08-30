@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  # Nome do serviço (como ele será chamado na rede interna do Docker)
+  db:
+    # Imagem oficial do PostgreSQL, versão 15 (estável e robusta) usando Alpine (mais leve)
+    image: postgres:15-alpine
+    
+    # Nome do container no sistema (para facilitar identificação no 'docker ps')
+    container_name: saei_postgres
+    
+    # Variáveis de ambiente que o PostgreSQL exige para iniciar
+    environment:
+      POSTGRES_USER: saei_user          # Usuário do banco
+      POSTGRES_PASSWORD: saei_password  # Senha do banco (mude em produção, ok para dev)
+      POSTGRES_DB: saei_db              # Nome do banco de dados que será criado automaticamente
+      
+    # Mapeamento de portas: PORTA_DO_SEU_PC:PORTA_DO_CONTAINER
+    # O Postgres roda na 5432 DENTRO do container. Mapeamos para a 5432 do seu Linux Mint.
+    ports:
+      - "5432:5432"
+      
+    # Volumes: A "Caixa Forte" para os dados não sumirem ao reiniciar o container
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+# Definição do volume persistente (o Docker gerencia isso automaticamente)
+volumes:
+  postgres_data:
