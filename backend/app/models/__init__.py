@@ -5,7 +5,7 @@ import enum
 
 # 1. Enum de papéis (UC01 - Autenticação)
 
-class UserRole(str, enum.ENUM):
+class UserRole(str, enum.Enum):
     ALUNO = "ALUNO"
     PROFESSOR = "PROFESSOR"
     COORDENADOR = "COORDENADOR"
