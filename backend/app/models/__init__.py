@@ -32,40 +32,40 @@ class Usuario(Base):
     matriculas = relationship("Matricula", back_populates = "aluno")
     turmas_lecionadas = relationship("Turma", back_populates = "professor")
 
-    # 3. Tabela de disciplinas
+# 3. Tabela de disciplinas
 
-    class Disciplina(Base):
-        __tablename__ = "disciplinas"
+class Disciplina(Base):
+    __tablename__ = "disciplinas"
 
-        id = Column(Integer, primary_key = True, index = True)
-        nome = Column(String, nullable = False)
-        codigo = Column(String, unique = True, nullable = False)
+    id = Column(Integer, primary_key = True, index = True)
+    nome = Column(String, nullable = False)
+    codigo = Column(String, unique = True, nullable = False)
 
-        turmas = relationship("Turma", back_populates = "disciplina")
+    turmas = relationship("Turma", back_populates = "disciplina")
 
-    # 4. Tabela de turma (UC06)
+# 4. Tabela de turma (UC06)
 
-    class Turma(Base):
-        __tablename__ = "turmas"
+class Turma(Base):
+    __tablename__ = "turmas"
 
-        id = Column(Integer, primary_key = True, index = True)
+    id = Column(Integer, primary_key = True, index = True)
 
-        professor_id = Column(Integer, ForeignKey("usuarios.id"), nullable = False)
-        disciplina_id = Column(Integer, ForeignKey("disciplinas.id"), nullable = False)
+    professor_id = Column(Integer, ForeignKey("usuarios.id"), nullable = False)
+    disciplina_id = Column(Integer, ForeignKey("disciplinas.id"), nullable = False)
 
-        professor = relationship("Usuario", back_populates = "turmas_lecionadas")
-        disciplina = relationship("Disciplina", back_populates = "turmas")
-        alunos_matriculados = relationship("Matricula", back_populates = "turma")
+    professor = relationship("Usuario", back_populates = "turmas_lecionadas")
+    disciplina = relationship("Disciplina", back_populates = "turmas")
+    alunos_matriculados = relationship("Matricula", back_populates = "turma")
 
-    # 5. Tabela de matricula (UC06, UC08)
+# 5. Tabela de matricula (UC06, UC08)
 
-    class Matricula(Base):
-        __tablename__ = "matriculas"
+class Matricula(Base):
+    __tablename__ = "matriculas"
 
-        id = Column(Integer, primary_key = True, index = True)
+    id = Column(Integer, primary_key = True, index = True)
 
-        aluno_id = Column(Integer, ForeignKey("usuarios.id"), nullable = False)
-        turma_id = Column(Integer, ForeignKey("turmas.id"), nullable = False)
+    aluno_id = Column(Integer, ForeignKey("usuarios.id"), nullable = False)
+    turma_id = Column(Integer, ForeignKey("turmas.id"), nullable = False)
 
-        aluno = relationship("Usuario", back_populates = "matriculas")
-        turma = relationship("Turma", back_populates = "alunos_matriculados")
+    aluno = relationship("Usuario", back_populates = "matriculas")
+    turma = relationship("Turma", back_populates = "alunos_matriculados")
