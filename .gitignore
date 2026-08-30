@@ -1,0 +1,17 @@
+   # Python / FastAPI
+   venv/
+   __pycache__/
+   *.pyc
+   .env
+   
+   # Node / React (para quando o Dev 1 começar)
+   node_modules/
+   dist/
+   .env.local
+   
+   # IDEs
+   .vscode/
+   .idea/
+   
+   # Docker (opcional, mas bom ter)
+   .docker/
