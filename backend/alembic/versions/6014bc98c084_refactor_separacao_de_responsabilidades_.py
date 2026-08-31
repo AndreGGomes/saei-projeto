@@ -1,8 +1,8 @@
-"""criando tabelas iniciais
+"""refactor: separacao de responsabilidades user-profile pattern
 
-Revision ID: 448334bc2fe9
+Revision ID: 6014bc98c084
 Revises: 
-Create Date: 2026-08-30 20:55:45.881765
+Create Date: 2026-08-30 21:31:58.067420
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '448334bc2fe9'
+revision: str = '6014bc98c084'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -35,12 +35,38 @@ def upgrade() -> None:
     sa.Column('email', sa.String(), nullable=False),
     sa.Column('senha_hash', sa.String(), nullable=False),
     sa.Column('role', sa.Enum('ALUNO', 'PROFESSOR', 'COORDENADOR', name='userrole'), nullable=False),
-    sa.Column('tutor_id', sa.Integer(), nullable=True),
-    sa.ForeignKeyConstraint(['tutor_id'], ['usuarios.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_usuarios_email'), 'usuarios', ['email'], unique=True)
     op.create_index(op.f('ix_usuarios_id'), 'usuarios', ['id'], unique=False)
+    op.create_table('alunos',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('usuario_id', sa.Integer(), nullable=False),
+    sa.Column('matricula', sa.String(), nullable=False),
+    sa.Column('tutor_id', sa.Integer(), nullable=True),
+    sa.ForeignKeyConstraint(['tutor_id'], ['usuarios.id'], ),
+    sa.ForeignKeyConstraint(['usuario_id'], ['usuarios.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('matricula'),
+    sa.UniqueConstraint('usuario_id')
+    )
+    op.create_index(op.f('ix_alunos_id'), 'alunos', ['id'], unique=False)
+    op.create_table('coordenadores',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('usuario_id', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['usuario_id'], ['usuarios.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('usuario_id')
+    )
+    op.create_index(op.f('ix_coordenadores_id'), 'coordenadores', ['id'], unique=False)
+    op.create_table('professores',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('usuario_id', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['usuario_id'], ['usuarios.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('usuario_id')
+    )
+    op.create_index(op.f('ix_professores_id'), 'professores', ['id'], unique=False)
     op.create_table('turmas',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('professor_id', sa.Integer(), nullable=False),
@@ -69,6 +95,12 @@ def downgrade() -> None:
     op.drop_table('matriculas')
     op.drop_index(op.f('ix_turmas_id'), table_name='turmas')
     op.drop_table('turmas')
+    op.drop_index(op.f('ix_professores_id'), table_name='professores')
+    op.drop_table('professores')
+    op.drop_index(op.f('ix_coordenadores_id'), table_name='coordenadores')
+    op.drop_table('coordenadores')
+    op.drop_index(op.f('ix_alunos_id'), table_name='alunos')
+    op.drop_table('alunos')
     op.drop_index(op.f('ix_usuarios_id'), table_name='usuarios')
     op.drop_index(op.f('ix_usuarios_email'), table_name='usuarios')
     op.drop_table('usuarios')
