@@ -1,29 +1,43 @@
 version: '3.8'
 
 services:
-  # Nome do serviço (como ele será chamado na rede interna do Docker)
+  # --- BANCO DE DADOS ---
   db:
-    # Imagem oficial do PostgreSQL, versão 15 (estável e robusta) usando Alpine (mais leve)
     image: postgres:15-alpine
-    
-    # Nome do container no sistema (para facilitar identificação no 'docker ps')
     container_name: saei_postgres
-    
-    # Variáveis de ambiente que o PostgreSQL exige para iniciar
     environment:
-      POSTGRES_USER: saei_user          # Usuário do banco
-      POSTGRES_PASSWORD: saei_password  # Senha do banco (mude em produção, ok para dev)
-      POSTGRES_DB: saei_db              # Nome do banco de dados que será criado automaticamente
-      
-    # Mapeamento de portas: PORTA_DO_SEU_PC:PORTA_DO_CONTAINER
-    # O Postgres roda na 5432 DENTRO do container. Mapeamos para a 5432 do seu Linux Mint.
+      POSTGRES_USER: saei_user
+      POSTGRES_PASSWORD: saei_password
+      POSTGRES_DB: saei_db
     ports:
-      - "5432:5432"
-      
-    # Volumes: A "Caixa Forte" para os dados não sumirem ao reiniciar o container
+      - "5432:5432" # Mapeado para você usar o DBeaver no seu PC
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - saei_network
 
-# Definição do volume persistente (o Docker gerencia isso automaticamente)
+  # --- BACKEND (FASTAPI) ---
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: saei_backend
+    ports:
+      - "8000:8000" # Acesse a API em http://localhost:8000
+    environment:
+      # O host aqui é 'db' (o nome do serviço acima), NÃO é localhost!
+      DATABASE_URL: postgresql://saei_user:saei_password@db:5432/saei_db
+    volumes:
+      # Espelha a pasta local para o container (Hot-Reload em tempo real)
+      - ./backend:/app
+    depends_on:
+      - db
+    networks:
+      - saei_network
+
 volumes:
   postgres_data:
+
+networks:
+  saei_network:
+    driver: bridge
