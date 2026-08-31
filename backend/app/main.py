@@ -2,6 +2,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app import usuarios
+
 # 1. Cria a instância do aplicativo FastAPI 
 # (É EXATAMENTE essa variável "app" que o Uvicorn está procurando!)
 app = FastAPI(
@@ -19,6 +21,8 @@ app.add_middleware(
     allow_methods=["*"], # Permite GET, POST, PUT, DELETE
     allow_headers=["*"], # Permite enviar o Token JWT no Header
 )
+
+app.include_router(usuarios.router)
 
 # 3. Rota de teste (Health Check) para provar que o servidor está vivo
 @app.get("/")
