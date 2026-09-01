@@ -14,13 +14,19 @@ class Usuario(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     nome = Column(String, nullable=False)
-    email = Column(String, unique=True, index=True, nullable=False)
+    email = Column(String, index=True, nullable=False)
     senha_hash = Column(String, nullable=False)
     role = Column(SAEnum(UserRole), nullable=False)
     
-    # Relacionamentos 1:1 com os Perfis de Negócio
-    # uselist=False garante que é um relacionamento "Um para Um"
-    perfil_aluno = relationship("Aluno", back_populates="usuario", uselist=False, cascade="all, delete-orphan")
+    # AQUI ESTÁ A CORREÇÃO: Adicionado foreign_keys="[Aluno.usuario_id]"
+    perfil_aluno = relationship(
+        "Aluno", 
+        back_populates="usuario", 
+        uselist=False, 
+        cascade="all, delete-orphan",
+        foreign_keys="[Aluno.usuario_id]" 
+    )
+    
     perfil_professor = relationship("Professor", back_populates="usuario", uselist=False, cascade="all, delete-orphan")
     perfil_coordenador = relationship("Coordenador", back_populates="usuario", uselist=False, cascade="all, delete-orphan")
 
@@ -40,7 +46,12 @@ class Aluno(Base):
     usuario = relationship("Usuario", back_populates="perfil_aluno", foreign_keys=[usuario_id])
     # O tutor aponta para a tabela de usuários (pois o login do coordenador está lá)
     tutor = relationship("Usuario", foreign_keys=[tutor_id]) 
-    matriculas = relationship("Matricula", back_populates="aluno", cascade="all, delete-orphan")
+    matriculas = relationship(
+        "Matricula", 
+        back_populates="aluno", 
+        cascade="all, delete-orphan",
+        primaryjoin="Aluno.usuario_id == foreign(Matricula.aluno_id)" # <- foreign() adicionado
+    )
 
 class Professor(Base):
     __tablename__ = "professores"
@@ -49,7 +60,12 @@ class Professor(Base):
     usuario_id = Column(Integer, ForeignKey("usuarios.id"), unique=True, nullable=False)
 
     usuario = relationship("Usuario", back_populates="perfil_professor")
-    turmas_lecionadas = relationship("Turma", back_populates="professor", cascade="all, delete-orphan")
+    turmas_lecionadas = relationship(
+        "Turma", 
+        back_populates="professor", 
+        cascade="all, delete-orphan",
+        primaryjoin="Professor.usuario_id == foreign(Turma.professor_id)" # <- foreign() adicionado
+    )
 
 class Coordenador(Base):
     __tablename__ = "coordenadores"
@@ -61,8 +77,11 @@ class Coordenador(Base):
     
     # UC07: Lista de alunos que este coordenador tutora
     # Busca na tabela 'alunos' onde o 'tutor_id' seja igual ao 'usuario_id' deste coordenador
-    tutorados = relationship("Aluno", primaryjoin="Coordenador.usuario_id == remote(Aluno.tutor_id)", viewonly=True)
-
+    tutorados = relationship(
+        "Aluno", 
+        primaryjoin="Coordenador.usuario_id == foreign(Aluno.tutor_id)", # <- Substituído remote por foreign
+        viewonly=True
+    )
 class Disciplina(Base):
     __tablename__ = "disciplinas"
     id = Column(Integer, primary_key=True, index=True)

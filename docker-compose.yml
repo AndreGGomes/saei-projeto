@@ -27,6 +27,7 @@ services:
     environment:
       # O host aqui é 'db' (o nome do serviço acima), NÃO é localhost!
       DATABASE_URL: postgresql://saei_user:saei_password@db:5432/saei_db
+      SECRET_KEY: dcvEek8zldAUpcB3OT9h3nczSpB3nq35v7WMXtUSgOB
     volumes:
       # Espelha a pasta local para o container (Hot-Reload em tempo real)
       - ./backend:/app
