@@ -1,7 +1,7 @@
 # backend/app/models/__init__.py
 from sqlalchemy import Column, Integer, String, ForeignKey, Enum as SAEnum, Boolean
 from sqlalchemy.orm import relationship
-from app.database import Base
+from app.db.database import Base
 import enum
 
 class UserRole(str, enum.Enum):

@@ -6,7 +6,7 @@ import sys
 import os
 
 # Importa a Base e os modelos
-from app.database import Base
+from app.db.database import Base
 from app.models import Usuario, Aluno, Professor, Coordenador, Disciplina, Turma, Matricula, UserRole
 
 # this is the Alembic Config object, which provides

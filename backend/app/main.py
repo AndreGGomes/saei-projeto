@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import usuarios
+from app.api.routers import usuarios
 
 # 1. Cria a instância do aplicativo FastAPI 
 # (É EXATAMENTE essa variável "app" que o Uvicorn está procurando!)
