@@ -1,27 +1,29 @@
+# app/services/usuario_service.py
 from datetime import timedelta
-from fastapi import HTTPException, status
 from app.core import auth
 from app.models import Usuario, Aluno, Professor, Coordenador, UserRole
 from app.schemas import schemas
 from app.core.config import settings
 from app.repositories.usuario_repository import UsuarioRepository
+from app.core.exceptions import (
+    MatriculaObrigatoriaError, MatriculaJaCadastradaError, 
+    EmailJaEmUsoError, MultiplasContasError, 
+    CredenciaisInvalidasError, UsuarioNaoEncontradoError
+)
 
 class UsuarioService:
     def __init__(self, repository: UsuarioRepository):
         self.repository = repository
 
     def registrar_usuario(self, user_in: schemas.UsuarioCreate) -> Usuario:
-        # Regras de Aluno
         if user_in.role == UserRole.ALUNO:
             if not user_in.matricula:
-                raise HTTPException(status_code=400, detail="Matrícula é obrigatória para alunos.")
+                raise MatriculaObrigatoriaError("Matrícula é obrigatória para alunos.")
             if self.repository.buscar_por_matricula(user_in.matricula):
-                raise HTTPException(status_code=400, detail="Esta matrícula já está cadastrada.")
-        
-        # Regras de Funcionários
+                raise MatriculaJaCadastradaError("Esta matrícula já está cadastrada.")
         else:
             if self.repository.buscar_funcionarios_por_email(user_in.email.lower()):
-                raise HTTPException(status_code=400, detail="Este e-mail já está em uso por outro funcionário.")
+                raise EmailJaEmUsoError("Este e-mail já está em uso por outro funcionário.")
 
         novo_usuario = Usuario(
             nome=user_in.nome,
@@ -30,7 +32,6 @@ class UsuarioService:
             role=user_in.role
         )
 
-        # Determina o perfil
         perfil_obj = None
         if user_in.role == UserRole.ALUNO:
             perfil_obj = Aluno(matricula=user_in.matricula)
@@ -41,7 +42,6 @@ class UsuarioService:
 
         user_salvo = self.repository.criar_usuario_com_perfil(novo_usuario, perfil_obj)
         
-        # Atribuição dinâmica para o Schema
         if user_in.role == UserRole.ALUNO:
             user_salvo.matricula = user_in.matricula 
 
@@ -55,21 +55,14 @@ class UsuarioService:
             if len(usuarios_encontrados) == 1:
                 user = usuarios_encontrados[0]
             elif len(usuarios_encontrados) > 1:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Múltiplas contas encontradas. Faça login utilizando a Matrícula do aluno."
-                )
+                raise MultiplasContasError("Múltiplas contas encontradas. Faça login utilizando a Matrícula do aluno.")
         else:
             aluno = self.repository.buscar_por_matricula(identificador)
             if aluno:
                 user = aluno.usuario
 
         if not user or not auth.verify_password(password, user.senha_hash):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Credenciais incorretas",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+            raise CredenciaisInvalidasError("Credenciais incorretas")
         
         token = auth.create_access_token(
             data={"sub": str(user.id), "email": user.email, "role": user.role.value}, 
@@ -80,5 +73,5 @@ class UsuarioService:
     def buscar_usuario(self, user_id: int) -> Usuario:
         user = self.repository.buscar_por_id(user_id)
         if not user:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado")
+            raise UsuarioNaoEncontradoError("Usuário não encontrado")
         return user
