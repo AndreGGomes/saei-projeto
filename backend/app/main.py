@@ -2,7 +2,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import usuarios
+from app.api.routers import usuarios
+from app.api.exception_handlers import registrar_handlers_de_excecao
 
 # 1. Cria a instância do aplicativo FastAPI 
 # (É EXATAMENTE essa variável "app" que o Uvicorn está procurando!)
@@ -21,6 +22,8 @@ app.add_middleware(
     allow_methods=["*"], # Permite GET, POST, PUT, DELETE
     allow_headers=["*"], # Permite enviar o Token JWT no Header
 )
+
+registrar_handlers_de_excecao(app)
 
 app.include_router(usuarios.router)
 
