@@ -40,3 +40,6 @@ class MatriculaRepository:
     def deletar(self, matricula: Matricula):
         self.db.delete(matricula)
         self.db.commit()
+
+    def listar_todas(self):
+        return self.db.query(Matricula).all()

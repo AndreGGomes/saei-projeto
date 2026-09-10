@@ -1,4 +1,6 @@
 # app/api/routers/matricula.py
+from typing import List
+
 from fastapi import APIRouter, Depends, status
 from app.models import Usuario
 from app.schemas.matricula_schemas import MatriculaCreate, MatriculaUpdateProfessor, MatriculaResponse
@@ -31,3 +33,10 @@ def deletar_matricula(
     current_user: Usuario = Depends(get_current_user)
 ):
     service.deletar_matricula(matricula_id, current_user)
+
+@router.get("/todas-matriculas", response_model=List[MatriculaResponse])
+def listar_matriculas(
+    service=Depends(get_matricula_service),
+    current_user: Usuario = Depends(get_current_user)
+):
+    return service.listar_todas(current_user)

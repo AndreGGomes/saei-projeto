@@ -57,3 +57,7 @@ class MatriculaService:
             raise RecursoNaoEncontradoError("Matrícula não encontrada.")
             
         self.matricula_repo.deletar(matricula)
+
+    def listar_todas(self, usuario_logado: Usuario):
+        self._verificar_permissao(usuario_logado)
+        return self.matricula_repo.listar_todas()
