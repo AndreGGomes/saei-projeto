@@ -18,6 +18,7 @@ class DisciplinaResponse(BaseModel):
 
 class AlunoResponse(BaseModel):
     usuario_id: int
+    nome: str
     matricula: str
     class Config:
         from_attributes = True
