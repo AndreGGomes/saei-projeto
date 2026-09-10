@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routers import usuarios
+from app.api.routers import acompanhamento, disciplinas, matricula, usuarios
 from app.api.exception_handlers import registrar_handlers_de_excecao
 
 # 1. Cria a instância do aplicativo FastAPI 
@@ -26,6 +26,9 @@ app.add_middleware(
 registrar_handlers_de_excecao(app)
 
 app.include_router(usuarios.router)
+app.include_router(acompanhamento.router)
+app.include_router(matricula.router)
+app.include_router(disciplinas.router)
 
 # 3. Rota de teste (Health Check) para provar que o servidor está vivo
 @app.get("/")

@@ -7,7 +7,7 @@ import os
 
 # Importa a Base e os modelos
 from app.db.database import Base
-from app.models import Usuario, Aluno, Professor, Coordenador, Disciplina, Turma, Matricula, UserRole
+from app.models import Usuario, Aluno, Professor, Coordenador, Disciplina, Matricula, UserRole
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

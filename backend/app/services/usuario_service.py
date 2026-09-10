@@ -2,7 +2,7 @@
 from datetime import timedelta
 from app.core import auth
 from app.models import Usuario, Aluno, Professor, Coordenador, UserRole
-from app.schemas import schemas
+from app.schemas.usuario_schemas import *
 from app.core.config import settings
 from app.repositories.usuario_repository import UsuarioRepository
 from app.core.exceptions import (
@@ -15,7 +15,7 @@ class UsuarioService:
     def __init__(self, repository: UsuarioRepository):
         self.repository = repository
 
-    def registrar_usuario(self, user_in: schemas.UsuarioCreate) -> Usuario:
+    def registrar_usuario(self, user_in: UsuarioCreate) -> Usuario:
         if user_in.role == UserRole.ALUNO:
             if not user_in.matricula:
                 raise MatriculaObrigatoriaError("Matrícula é obrigatória para alunos.")

@@ -21,3 +21,21 @@ class CredenciaisInvalidasError(UsuarioException):
 
 class UsuarioNaoEncontradoError(UsuarioException):
     pass
+
+class PermissaoNegadaError(Exception):
+    pass
+
+class RecursoNaoEncontradoError(Exception):
+    pass
+
+class VinculoJaExistenteError(Exception):
+    pass
+
+class CodigoDisciplinaJaExisteError(Exception):
+    pass
+
+class TurmaNaoEncontradaError(Exception):
+    pass
+
+class DisciplinaNaoEncontradaError(Exception):
+    pass
