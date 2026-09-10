@@ -29,13 +29,6 @@ class MatriculaResponse(BaseModel):
     class Config:
         from_attributes = True
 
-class TurmaResponse(BaseModel):
-    id: int
-    disciplina: DisciplinaResponse
-    alunos_matriculados: List[MatriculaResponse] = []
-    class Config:
-        from_attributes = True
-
 class AcompanhamentoResponse(BaseModel):
     # Usado para padronizar a resposta do UC08
     tipo: str
