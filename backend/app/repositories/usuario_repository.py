@@ -8,9 +8,6 @@ class UsuarioRepository:
     def buscar_por_id(self, user_id: int) -> Usuario:
         return self.db.query(Usuario).filter(Usuario.id == user_id).first()
 
-    def buscar_por_matricula(self, matricula: str) -> Aluno:
-        return self.db.query(Aluno).filter(Aluno.matricula == matricula).first()
-
     def buscar_funcionarios_por_email(self, email: str) -> Usuario:
         return self.db.query(Usuario).filter(
             Usuario.email == email, 
