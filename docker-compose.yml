@@ -1,6 +1,6 @@
 version: '3.8'
 
-services:
+services: # abre a lista dos containers q serão criados
   # --- BANCO DE DADOS ---
   db:
     image: postgres:15-alpine
@@ -10,9 +10,9 @@ services:
       POSTGRES_PASSWORD: saei_password
       POSTGRES_DB: saei_db
     ports:
-      - "5432:5432" # Mapeado para você usar o DBeaver no seu PC
+      - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data # O Postgres salva todos os arquivos binários das tabelas nessa pasta interna. Sem essa linha, no momento em que o Docker fosse desligado, todos os usuários, cadastros e dados criados sumiriam.
     networks:
       - saei_network
 
@@ -32,7 +32,7 @@ services:
       # Espelha a pasta local para o container (Hot-Reload em tempo real)
       - ./backend:/app
     depends_on:
-      - db
+      - db # serviço backend depende q o serviço db esteja ligado primeiro
     networks:
       - saei_network
 

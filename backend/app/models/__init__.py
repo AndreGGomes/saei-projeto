@@ -1,9 +1,9 @@
-# backend/app/models/__init__.py
 from sqlalchemy import Column, Integer, String, ForeignKey, Enum as SAEnum
 from sqlalchemy.orm import relationship
 from app.db.database import Base
 import enum
 
+# enumeração dos papeis de usuario
 class UserRole(str, enum.Enum):
     ALUNO = "ALUNO"
     PROFESSOR = "PROFESSOR"
@@ -17,17 +17,29 @@ class Usuario(Base):
     email = Column(String, index=True, nullable=False)
     senha_hash = Column(String, nullable=False)
     role = Column(SAEnum(UserRole), nullable=False)
-    
+
+    # cria ligações lógicas entre o usuário e as fichas de perfil
     perfil_aluno = relationship(
         "Aluno", 
-        back_populates="usuario", 
-        uselist=False, 
-        cascade="all, delete-orphan",
-        foreign_keys="[Aluno.usuario_id]" 
+        back_populates="usuario", # sincroniza com a propriedade usuario na classe Aluno
+        uselist=False, # transforma a relação em 1 para 1. em vez de usuario.perfil_aluno retornar uma lista de perfis, retorna apenas um único objeto de aluno.
+        cascade="all, delete-orphan", # se um usuário for deletado da tabela usuarios, o perfil correspondente dele na tabela é apagado automaticamente para não deixar registros órfãos e lixo no banco.
+        foreign_keys="[Aluno.usuario_id]" # Ensina ao SQLAlchemy qual coluna usar para ligar as duas tabelas. Como a tabela Aluno tem duas chaves para Usuario (usuario_id e tutor_id), sem essa instrução o ORM ficaria em dúvida sobre qual campo usar.
     )
     
-    perfil_professor = relationship("Professor", back_populates="usuario", uselist=False, cascade="all, delete-orphan")
-    perfil_coordenador = relationship("Coordenador", back_populates="usuario", uselist=False, cascade="all, delete-orphan")
+    perfil_professor = relationship(
+        "Professor", 
+        back_populates="usuario", 
+        uselist=False, 
+        cascade="all, delete-orphan"
+    )
+    
+    perfil_coordenador = relationship(
+        "Coordenador", 
+        back_populates="usuario", 
+        uselist=False, 
+        cascade="all, delete-orphan"
+    )
 
 class Aluno(Base):
     __tablename__ = "alunos"
@@ -36,17 +48,24 @@ class Aluno(Base):
     usuario_id = Column(Integer, ForeignKey("usuarios.id"), unique=True, nullable=False)
     
     matricula = Column(String, unique=True, nullable=False)
-    tutor_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    tutor_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True) # chave estrangeira opcional
 
-    usuario = relationship("Usuario", back_populates="perfil_aluno", foreign_keys=[usuario_id])
-    tutor = relationship("Usuario", foreign_keys=[tutor_id]) 
+    usuario = relationship(
+        "Usuario", 
+        back_populates="perfil_aluno", 
+        foreign_keys=[usuario_id]
+    )
     
-    # Atualizado para conversar perfeitamente com a nova entidade Matricula
+    tutor = relationship(
+        "Usuario", 
+        foreign_keys=[tutor_id]
+    ) 
+    
     matriculas = relationship(
         "Matricula", 
         back_populates="aluno", 
         cascade="all, delete-orphan",
-        primaryjoin="Aluno.usuario_id == foreign(Matricula.aluno_id)"
+        primaryjoin="Aluno.usuario_id == foreign(Matricula.aluno_id)" # define que a amarração entre as tabelas é feita comparando o usuario_id do aluno com a coluna aluno_id da tabela Matricula
     )
 
 class Professor(Base):
@@ -57,7 +76,6 @@ class Professor(Base):
 
     usuario = relationship("Usuario", back_populates="perfil_professor")
     
-    # Removida a relação de turmas, agora aponta direto para as matrículas vinculadas
     matriculas = relationship(
         "Matricula", 
         back_populates="professor", 
@@ -76,7 +94,7 @@ class Coordenador(Base):
     tutorados = relationship(
         "Aluno", 
         primaryjoin="Coordenador.usuario_id == foreign(Aluno.tutor_id)",
-        viewonly=True
+        viewonly=True # esse relacionamento é apenas para leitura. Para alterar o tutor de um aluno, altera-se o campo tutor_id no aluno, impedindo gravações ambíguas a partir do objeto do coordenador.
     )
 
 class Disciplina(Base):
@@ -85,7 +103,6 @@ class Disciplina(Base):
     nome = Column(String, nullable=False)
     codigo = Column(String, unique=True, nullable=False)
     
-    # Removida relação de turmas e adicionada relação com matrículas
     matriculas = relationship("Matricula", back_populates="disciplina", cascade="all, delete-orphan")
 
 class Matricula(Base):
@@ -96,7 +113,6 @@ class Matricula(Base):
     professor_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
     disciplina_id = Column(Integer, ForeignKey("disciplinas.id"), nullable=False)
 
-    # Transformados em relacionamentos bidirecionais (back_populates) em vez de viewonly
     aluno = relationship(
         "Aluno", 
         foreign_keys=[aluno_id], 
