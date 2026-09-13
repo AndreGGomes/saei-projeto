@@ -9,7 +9,7 @@ from app.services.matricula_service import MatriculaService
 
 router = APIRouter(prefix="/matriculas", tags=["Matrículas e Vínculos"])
 
-@router.post("/", response_model=MatriculaResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/criar", response_model=MatriculaResponse, status_code=status.HTTP_201_CREATED)
 def criar_matricula(
     dados: MatriculaCreate,
     service: MatriculaService = Depends(get_matricula_service),
@@ -17,7 +17,7 @@ def criar_matricula(
 ):
     return service.criar_matricula(dados, current_user)
 
-@router.patch("/{matricula_id}/professor", response_model=MatriculaResponse)
+@router.patch("/{matricula_id}/mudar-professor", response_model=MatriculaResponse)
 def mudar_professor_da_matricula(
     matricula_id: int,
     dados: MatriculaUpdateProfessor,

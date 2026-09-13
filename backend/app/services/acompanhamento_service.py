@@ -24,37 +24,6 @@ class AcompanhamentoService:
         if usuario.role != UserRole.COORDENADOR:
             raise PermissaoNegadaError("Apenas coordenadores podem realizar esta ação.")
 
-    def vincular_aluno(self, dados: VincularMatriculaIn, usuario_logado: Usuario):
-        self._verificar_permissao_coordenador(usuario_logado)
-
-        aluno = self.aluno_repo.buscar_por_usuario_id(dados.aluno_usuario_id)
-        if not aluno:
-            raise RecursoNaoEncontradoError("Aluno não encontrado.")
-            
-        professor = self.professor_repo.buscar_por_usuario_id(dados.professor_usuario_id)
-        if not professor:
-            raise RecursoNaoEncontradoError("Professor não encontrado.")
-            
-        disciplina = self.disciplina_repo.buscar_por_id(dados.disciplina_id)
-        if not disciplina:
-            raise RecursoNaoEncontradoError("Disciplina não encontrada.")
-
-        # Verifica direto na tabela de matrículas se o vínculo já existe para essa disciplina
-        matricula_existente = self.matricula_repo.buscar_por_aluno_e_disciplina(
-            aluno_id=dados.aluno_usuario_id, 
-            disciplina_id=dados.disciplina_id
-        )
-        
-        if matricula_existente:
-            raise VinculoJaExistenteError("O aluno já está matriculado nesta disciplina.")
-
-        # Cria a matrícula ligando os 3 pontos de uma vez
-        return self.matricula_repo.criar(
-            aluno_id=dados.aluno_usuario_id, 
-            professor_id=dados.professor_usuario_id, 
-            disciplina_id=dados.disciplina_id
-        )
-
     def vincular_tutor(self, dados: TutorarAlunoIn, usuario_logado: Usuario):
         self._verificar_permissao_coordenador(usuario_logado)
 
