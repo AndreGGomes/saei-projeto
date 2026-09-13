@@ -52,7 +52,17 @@ class AcompanhamentoService:
         elif usuario_logado.role == UserRole.PROFESSOR:
             # Lista as matrículas (vínculos aluno-disciplina) vinculadas ao professor
             matriculas = self.matricula_repo.listar_por_professor(usuario_logado.id)
-            return AcompanhamentoResponse(tipo="PROFESSOR", matriculas=matriculas)
+            matriculas_formatadas = []
+            for m in matriculas:
+                matriculas_formatadas.append({
+                    "id": m.id,
+                    "aluno": {
+                        "usuario_id": m.aluno.usuario_id,
+                        "nome": m.aluno.usuario.nome, 
+                        "matricula": m.aluno.matricula
+                    }
+                })
+            return AcompanhamentoResponse(tipo="PROFESSOR", matriculas=matriculas_formatadas)
             
         else:
             raise PermissaoNegadaError("Alunos não possuem acesso à listagem de responsabilidade.")
