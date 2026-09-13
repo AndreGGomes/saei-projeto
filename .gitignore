@@ -1,17 +1,20 @@
-   # Python / FastAPI
    venv/
+   .venv/
+   env/
+   ENV/
+   */venv/
+   */.venv/
    __pycache__/
    *.pyc
    .env
-   
-   # Node / React
+   .env.*
+   !.env.example
+   *.py[cod]
+   *$py.class
+   **/**/__pycache__/
    node_modules/
    dist/
    .env.local
-   
-   # IDEs
    .vscode/
    .idea/
-   
-   # Docker (opcional, mas bom ter)
    .docker/
