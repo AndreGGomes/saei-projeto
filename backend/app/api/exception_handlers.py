@@ -45,3 +45,11 @@ def registrar_handlers_de_excecao(app: FastAPI):
             status_code=status.HTTP_404_NOT_FOUND,
             content={"detail": str(exc)},
         )
+
+    @app.exception_handler(PermissaoNegadaError)
+    async def forbidden_handler(request: Request, exc: Exception):
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content={"detail": str(exc)},
+                headers={"WWW-Authenticate": "Bearer"},
+            )

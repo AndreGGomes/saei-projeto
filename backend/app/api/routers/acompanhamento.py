@@ -9,14 +9,6 @@ from app.core.exceptions import PermissaoNegadaError, RecursoNaoEncontradoError,
 
 router = APIRouter(prefix="/acompanhamento")
 
-@router.post("/turmas/matricular", response_model=MatriculaResponse, status_code=status.HTTP_201_CREATED)
-def matricular_aluno(
-    dados: VincularMatriculaIn,
-    service: AcompanhamentoService = Depends(get_acompanhamento_service),
-    current_user: Usuario = Depends(get_current_user)
-):
-    return service.vincular_aluno(dados, current_user)
-
 @router.post("/definir-coordenador-tutor", status_code=status.HTTP_200_OK)
 def definir_tutor(
     dados: TutorarAlunoIn,
