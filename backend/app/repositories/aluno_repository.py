@@ -9,6 +9,9 @@ class AlunoRepository:
     def buscar_por_usuario_id(self, usuario_id: int) -> Aluno | None:
         return self.db.query(Aluno).filter(Aluno.usuario_id == usuario_id).first()
 
+    def buscar_por_matricula(self, matricula: str) -> Aluno:
+        return self.db.query(Aluno).filter(Aluno.matricula == matricula).first()
+
     def atualizar_tutor(self, aluno: Aluno, tutor_id: int):
         aluno.tutor_id = tutor_id
         self.db.commit()

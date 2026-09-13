@@ -18,9 +18,10 @@ from app.services.matricula_service import MatriculaService
 
 # 1. Construtor do Service de Usuário
 def get_usuario_service(db: Session = Depends(get_db)) -> UsuarioService:
-    repository = UsuarioRepository(db)
-    return UsuarioService(repository)
-
+    return UsuarioService(
+        usuario_repo=UsuarioRepository(db),
+        aluno_repo=AlunoRepository(db)
+    )
 # 2. Proteção de Rotas
 def get_current_user(
     token: Annotated[str, Depends(auth.oauth2_scheme)], 

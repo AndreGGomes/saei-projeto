@@ -2,13 +2,6 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional
 from app.models import UserRole
 
-class UsuarioCreate(BaseModel):
-    nome: str
-    email: EmailStr
-    senha: str
-    role: UserRole
-    matricula: Optional[str] = None  # Necessário se role == ALUNO
-
 class UsuarioPublico(BaseModel):
     id: int
     nome: str
@@ -21,4 +14,15 @@ class UsuarioPublico(BaseModel):
 
 class UsuarioPrivado(UsuarioPublico):
     email: EmailStr
-    matricula: Optional[str] = None  # Necessário se role == ALUNO
+    matricula: Optional[str] = None 
+
+class AlunoCreate(BaseModel):
+    nome: str
+    email: EmailStr
+    senha: str
+    matricula: str
+
+class FuncionarioCreate(BaseModel):
+    nome: str
+    email: EmailStr
+    senha: str

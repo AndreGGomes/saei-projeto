@@ -40,7 +40,14 @@ class AcompanhamentoService:
     def listar_sob_responsabilidade(self, usuario_logado: Usuario) -> AcompanhamentoResponse:
         if usuario_logado.role == UserRole.COORDENADOR:
             tutorados = self.aluno_repo.listar_por_tutor(usuario_logado.id)
-            return AcompanhamentoResponse(tipo="COORDENADOR", tutorados=tutorados)
+            tutorados_formatados = []
+            for aluno in tutorados:
+                tutorados_formatados.append({
+                    "usuario_id": aluno.usuario_id,
+                    "nome": aluno.usuario.nome,   
+                    "matricula": aluno.matricula
+                })
+            return AcompanhamentoResponse(tipo="COORDENADOR", tutorados=tutorados_formatados)
             
         elif usuario_logado.role == UserRole.PROFESSOR:
             # Lista as matrículas (vínculos aluno-disciplina) vinculadas ao professor
