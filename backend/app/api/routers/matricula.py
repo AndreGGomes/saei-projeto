@@ -1,4 +1,3 @@
-# app/api/routers/matricula.py
 from typing import List
 
 from fastapi import APIRouter, Depends, status

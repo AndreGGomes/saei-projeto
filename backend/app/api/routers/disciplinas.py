@@ -1,4 +1,3 @@
-# app/api/routers/disciplinas.py
 from fastapi import APIRouter, Depends, status
 from app.models import Usuario
 from app.schemas.disciplina_schemas import DisciplinaCreate, DisciplinaResponse

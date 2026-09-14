@@ -1,4 +1,3 @@
-# app/api/exception_handlers.py
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 

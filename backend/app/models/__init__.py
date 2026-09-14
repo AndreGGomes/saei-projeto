@@ -21,11 +21,11 @@ class Usuario(Base):
     # cria ligações lógicas entre o usuário e as fichas de perfil
     perfil_aluno = relationship(
         "Aluno", 
-        back_populates="usuario", # sincroniza com a propriedade usuario na classe Aluno
+        back_populates="usuario", # sincroniza com a propriedade usuario na classe Aluno (Usuario.perfil_aluno <-> Aluno.usuario)
         uselist=False, # transforma a relação em 1 para 1. em vez de usuario.perfil_aluno retornar uma lista de perfis, retorna apenas um único objeto de aluno.
         cascade="all, delete-orphan", # se um usuário for deletado da tabela usuarios, o perfil correspondente dele na tabela é apagado automaticamente para não deixar registros órfãos e lixo no banco.
         foreign_keys="[Aluno.usuario_id]" # Ensina ao SQLAlchemy qual coluna usar para ligar as duas tabelas. Como a tabela Aluno tem duas chaves para Usuario (usuario_id e tutor_id), sem essa instrução o ORM ficaria em dúvida sobre qual campo usar.
-    )
+)
     
     perfil_professor = relationship(
         "Professor", 
@@ -116,7 +116,7 @@ class Matricula(Base):
     aluno = relationship(
         "Aluno", 
         foreign_keys=[aluno_id], 
-        primaryjoin="Matricula.aluno_id == Aluno.usuario_id", 
+        primaryjoin="Matricula.aluno_id == Aluno.usuario_id", # para descobrir qual Aluno pertence a esta Matricula, pegue o aluno_id (que guarda o ID do usuário) e encontre o registro na tabela de Alunos onde a coluna usuario_id seja idêntica
         back_populates="matriculas"
     )
     professor = relationship(

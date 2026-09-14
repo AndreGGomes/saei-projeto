@@ -1,4 +1,3 @@
-# app/api/routers/usuarios.py (ou o nome do seu arquivo de router)
 from fastapi import APIRouter, Depends, status
 from fastapi.security import OAuth2PasswordRequestForm
 

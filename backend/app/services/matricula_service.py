@@ -1,3 +1,5 @@
+# Gerencia os vínculos entre estudantes, professores e matérias. Garante que os três elementos existam antes de efetuar o vínculo e permite a troca de professor responsável.
+
 from app.models import Usuario, UserRole
 from app.schemas.matricula_schemas import MatriculaCreate
 from app.repositories.matricula_repository import MatriculaRepository
@@ -19,10 +21,12 @@ class MatriculaService:
         self.disciplina_repo = disciplina_repo
         self.aluno_repo = aluno_repo
 
+    # Apenas a coordenação pode mexer nas matrículas
     def _verificar_permissao(self, usuario: Usuario):
         if usuario.role != UserRole.COORDENADOR:
             raise PermissaoNegadaError("Apenas coordenadores podem gerenciar matrículas.")
 
+    # Validação de Integridade Referencial em Camada de Aplicação
     def criar_matricula(self, dados: MatriculaCreate, usuario_logado: Usuario):
         self._verificar_permissao(usuario_logado)
         
@@ -37,6 +41,7 @@ class MatriculaService:
             
         return self.matricula_repo.criar(dados.aluno_id, dados.professor_id, dados.disciplina_id)
 
+    # Confere se a matrícula existe, valida se o novo_professor_id é realmente um professor cadastrado e executa a troca.
     def mudar_professor(self, matricula_id: int, novo_professor_id: int, usuario_logado: Usuario):
         self._verificar_permissao(usuario_logado)
         
@@ -49,6 +54,7 @@ class MatriculaService:
             
         return self.matricula_repo.atualizar_professor(matricula, novo_professor_id)
 
+    #--- Métodos restritos à coordenação para cancelar vínculos ou emitir a lista completa de todas as matrículas cadastradas.
     def deletar_matricula(self, matricula_id: int, usuario_logado: Usuario):
         self._verificar_permissao(usuario_logado)
         
@@ -61,3 +67,4 @@ class MatriculaService:
     def listar_todas(self, usuario_logado: Usuario):
         self._verificar_permissao(usuario_logado)
         return self.matricula_repo.listar_todas()
+    #---
