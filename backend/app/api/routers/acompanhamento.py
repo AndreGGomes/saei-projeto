@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, status, HTTPException
 from app.models import Usuario
 from app.schemas.acompanhamento_schemas import (
-    VincularMatriculaIn, TutorarAlunoIn, MatriculaResponse, AcompanhamentoResponse
+    TutorarAlunoIn, MatriculaResponse, AcompanhamentoResponse
 )
 from app.api.dependencies import get_current_user, get_acompanhamento_service
 from app.services.acompanhamento_service import AcompanhamentoService

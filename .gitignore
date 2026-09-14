@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
    venv/
    .venv/
    env/
@@ -19,7 +19,7 @@
    .vscode/
    .idea/
    .docker/
-=======
+
 # Logs
 logs
 *.log
@@ -44,4 +44,3 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
->>>>>>> d44958e (feat(frontend): Conclusão da Sprint 1 - UC01 (Login/Cadastro) e UC06/UC07/UC08 (Dashboard Coordenador))
