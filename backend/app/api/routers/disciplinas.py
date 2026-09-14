@@ -1,3 +1,5 @@
+# Guichê de Gestão de Matérias (/disciplinas), com rotas para cadastrar e excluir disciplinas.
+
 from fastapi import APIRouter, Depends, status
 from app.models import Usuario
 from app.schemas.disciplina_schemas import DisciplinaCreate, DisciplinaResponse
@@ -6,6 +8,7 @@ from app.services.disciplina_service import DisciplinaService
 
 router = APIRouter(prefix="/disciplinas", tags=["Disciplinas"])
 
+# Recebe nome e código da disciplina
 @router.post("/", response_model=DisciplinaResponse, status_code=status.HTTP_201_CREATED)
 def criar_disciplina(
     dados: DisciplinaCreate,
@@ -14,6 +17,7 @@ def criar_disciplina(
 ):
     return service.criar_disciplina(dados, current_user)
 
+# Deleta uma disciplina pelo ID
 @router.delete("/{disciplina_id}", status_code=status.HTTP_204_NO_CONTENT)
 def deletar_disciplina(
     disciplina_id: int,

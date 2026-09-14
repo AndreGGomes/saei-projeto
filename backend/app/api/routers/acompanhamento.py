@@ -1,3 +1,5 @@
+# Guichê de Acompanhamento Inclusivo e Tutoria. Permite que coordenadores assumam a tutoria de alunos e alimenta a tela de painel pessoal (/meus-vinculos).
+
 from fastapi import APIRouter, Depends, status, HTTPException
 from app.models import Usuario
 from app.schemas.acompanhamento_schemas import (
@@ -9,6 +11,7 @@ from app.core.exceptions import PermissaoNegadaError, RecursoNaoEncontradoError,
 
 router = APIRouter(prefix="/acompanhamento")
 
+# O coordenador logado passa o aluno_usuario_id e vira o tutor oficial do estudante.
 @router.post("/definir-coordenador-tutor", status_code=status.HTTP_200_OK)
 def definir_tutor(
     dados: TutorarAlunoIn,
@@ -17,6 +20,7 @@ def definir_tutor(
 ):
     return service.vincular_tutor(dados, current_user)
 
+# O sistema descobre pelo token quem é a pessoa: se for coordenador, entrega os tutorados; se for professor, entrega os alunos das suas disciplinas; se for aluno, nega com erro 403.
 @router.get("/meus-vinculos", response_model=AcompanhamentoResponse)
 def listar_vinculos(
     service: AcompanhamentoService = Depends(get_acompanhamento_service),

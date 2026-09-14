@@ -14,7 +14,7 @@ class Usuario(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     nome = Column(String, nullable=False)
-    email = Column(String, index=True, nullable=False)
+    email = Column(String, index=True, nullable=False) # index=True cria um índice no banco para que o login por e-mail seja instantâneo sem varrer a tabela linha a linha.
     senha_hash = Column(String, nullable=False)
     role = Column(SAEnum(UserRole), nullable=False)
 

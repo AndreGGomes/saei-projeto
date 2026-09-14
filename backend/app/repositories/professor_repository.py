@@ -1,4 +1,4 @@
-
+# Trata do acesso aos dados da tabela professores.
 
 from sqlalchemy.orm import Session
 from app.models import Professor

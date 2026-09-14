@@ -1,5 +1,3 @@
-# app/core/exceptions.py
-
 class UsuarioException(Exception):
     """Exceção base para domínio de usuários"""
     pass
