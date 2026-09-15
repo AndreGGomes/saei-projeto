@@ -58,15 +58,6 @@ def read_users_me(current_user: Usuario = Depends(get_current_user)):
     """Retorna o usuário atualmente autenticado."""
     return current_user
 
-# Rota pública de consulta de perfil.
-@router.get("/{user_id}", response_model=usuario_schemas.UsuarioPublico)
-def get_user(
-    user_id: int, 
-    service: UsuarioService = Depends(get_usuario_service)
-):
-    """Retorna dados públicos de um usuário específico."""
-    return service.buscar_usuario(user_id)
-
 # Rota que retorna a lista de todos os professores cadastrados
 @router.get("/professores", response_model=List[usuario_schemas.ProfessorResumoPublico], status_code=status.HTTP_200_OK)
 def listar_professores(
@@ -75,3 +66,12 @@ def listar_professores(
 ):
     """Retorna a lista de todos os professores cadastrados para seleção na coordenação."""
     return service.listar_professores()
+
+# Rota pública de consulta de perfil.
+@router.get("/{user_id}", response_model=usuario_schemas.UsuarioPublico)
+def get_user(
+    user_id: int, 
+    service: UsuarioService = Depends(get_usuario_service)
+):
+    """Retorna dados públicos de um usuário específico."""
+    return service.buscar_usuario(user_id)

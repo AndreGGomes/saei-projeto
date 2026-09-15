@@ -21,6 +21,13 @@ class DisciplinaRepository:
         self.db.refresh(disciplina)
         return disciplina
 
+    # Atualiza nome da disciplina
+    def atualizar_nome(self, disciplina: Disciplina, novo_nome: str) -> Disciplina:
+        disciplina.nome = novo_nome
+        self.db.commit()
+        self.db.refresh(disciplina)
+        return disciplina
+
     # Remove a disciplina do banco. Se a matéria for deletada, todas as matrículas ligadas a ela são limpas do banco automaticamente.
     def deletar(self, disciplina: Disciplina):
         self.db.delete(disciplina)
