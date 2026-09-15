@@ -1,40 +1,23 @@
-# Padroniza as respostas de tutoria acadêmica e dos painéis de acompanhamento pedagógico usados por Coordenadores e Professores.
+# Contrato de comunicação para as ações de tutoria inclusiva e exibição do painel pedagógico.
 
 from pydantic import BaseModel
 from typing import List, Optional
+from app.schemas.matricula_schemas import MatriculaResponse
 
-# class VincularMatriculaIn(BaseModel):
-#   aluno_usuario_id: int
-#   professor_usuario_id: int
-#   disciplina_id: int
-
-# Requisição para assumir tutoria
+# Entrada para assumir tutoria via matrícula
 class TutorarAlunoIn(BaseModel):
-    aluno_usuario_id: int
+    aluno_matricula: str
 
-class DisciplinaResponse(BaseModel):
-    id: int
-    nome: str
-    codigo: str
-    class Config:
-        from_attributes = True
-
+# Resposta pública do aluno tutorado
 class AlunoResponse(BaseModel):
-    usuario_id: int
     nome: str
     matricula: str
+
     class Config:
         from_attributes = True
 
-class MatriculaResponse(BaseModel):
-    id: int
-    aluno: AlunoResponse
-    class Config:
-        from_attributes = True
-
-# Resposta polimórfica para a rota de acompanhamento
+# Resposta polimórfica para o painel de acompanhamento
 class AcompanhamentoResponse(BaseModel):
-    # Usado para padronizar a resposta do UC08
     tipo: str
     tutorados: Optional[List[AlunoResponse]] = None
     matriculas: Optional[List[MatriculaResponse]] = None
