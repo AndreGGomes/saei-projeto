@@ -11,7 +11,7 @@ class ProfessorRepository:
     def buscar_por_usuario_id(self, usuario_id: int) -> Professor | None:
         return self.db.query(Professor).filter(Professor.usuario_id == usuario_id).first()
 
-    # a partir do e-mail
+    # Localiza pelo e-mail. Ele faz um INNER JOIN entre a tabela professores e usuarios, garantindo que o e-mail consultado realmente pertença a um usuário cujo cargo seja PROFESSOR.
     def buscar_por_email(self, email: str) -> Professor | None:
         return (
             self.db.query(Professor)
