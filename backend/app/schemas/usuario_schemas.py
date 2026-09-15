@@ -33,3 +33,11 @@ class FuncionarioCreate(BaseModel):
     nome: str
     email: EmailStr
     senha: str
+
+# Mostra dados dos professores
+class ProfessorResumoPublico(BaseModel):
+    nome: str
+    email: EmailStr
+
+    class Config:
+        from_attributes = True

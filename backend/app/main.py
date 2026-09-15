@@ -18,10 +18,13 @@ app = FastAPI(
 # Permite que o React (porta 5173) faça requisições para o FastAPI (porta 8000)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Em produção, troque "*" por "http://localhost:5173"
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
     allow_credentials=True,
-    allow_methods=["*"], # Permite GET, POST, PUT, DELETE
-    allow_headers=["*"], # Permite enviar o Token JWT no Header
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Junta todas as rotas e regras criadas no projeto sob um único servidor.

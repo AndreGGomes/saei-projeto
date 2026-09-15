@@ -21,7 +21,8 @@ from app.services.matricula_service import MatriculaService
 def get_usuario_service(db: Session = Depends(get_db)) -> UsuarioService:
     return UsuarioService(
         usuario_repo=UsuarioRepository(db),
-        aluno_repo=AlunoRepository(db)
+        aluno_repo=AlunoRepository(db),
+        professor_repo=ProfessorRepository(db)
     )
 
 # Pega quem é o usuário atual

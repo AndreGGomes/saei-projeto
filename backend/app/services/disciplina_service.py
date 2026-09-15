@@ -14,6 +14,14 @@ class DisciplinaService:
         if usuario.role != UserRole.COORDENADOR:
             raise PermissaoNegadaError("Apenas coordenadores podem gerenciar disciplinas.")
 
+
+    # Permite buscar disciplina pelo código
+    def buscar_por_codigo(self, codigo: str, usuario_logado: Usuario):
+        disciplina = self.repository.buscar_por_codigo(codigo)
+        if not disciplina:
+            raise DisciplinaNaoEncontradaError(f"Disciplina com código '{codigo}' não encontrada.")
+        return disciplina
+
     # Confere se quem chamou é Coordenador, checa se o código já está em uso e, se estiver livre, salva no banco.
     def criar_disciplina(self, dados: DisciplinaCreate, usuario_logado: Usuario):
         self._verificar_permissao(usuario_logado)
@@ -22,13 +30,27 @@ class DisciplinaService:
             raise CodigoDisciplinaJaExisteError("Já existe uma disciplina com este código.")
             
         return self.repository.criar(dados.nome, dados.codigo)
+
+    # Se for o coordenador, atualiza o nome da disciplina
+    def atualizar_nome_disciplina(self, codigo: str, novo_nome: str, usuario_logado: Usuario):
+        self._verificar_permissao(usuario_logado)
+        disciplina = self.repository.buscar_por_codigo(codigo)
+        if not disciplina:
+            raise DisciplinaNaoEncontradaError(f"Disciplina com código '{codigo}' não encontrada.")
+        
+        return self.repository.atualizar_nome(disciplina, novo_nome.strip())
     
     # Confere se quem chamou é Coordenador, valida se a disciplina existe antes de tentar deletar e, se existir, manda apagar.
-    def deletar_disciplina(self, disciplina_id: int, usuario_logado: Usuario):
+    def deletar_disciplina(self, disciplina_codigo: str, usuario_logado: Usuario):
         self._verificar_permissao(usuario_logado)
         
-        disciplina = self.repository.buscar_por_id(disciplina_id)
+        disciplina = self.repository.buscar_por_codigo(disciplina_codigo)
         if not disciplina:
-            raise DisciplinaNaoEncontradaError("Disciplina não encontrada.")
+            raise DisciplinaNaoEncontradaError(f"Disciplina com código {disciplina_codigo} não encontrada.")
             
         self.repository.deletar(disciplina)
+
+    # Somente o coordenador pode listar as disciplinas.
+    def listar_disciplinas(self, usuario_logado: Usuario) -> list:
+        self._verificar_permissao(usuario_logado)
+        return self.repository.listar_todas()

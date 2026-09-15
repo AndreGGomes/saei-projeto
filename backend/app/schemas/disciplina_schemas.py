@@ -7,6 +7,10 @@ class DisciplinaCreate(BaseModel):
     nome: str
     codigo: str
 
+# formulário de atualização de nome da disciplina (caso o coordenador digite errado)
+class DisciplinaUpdateNome(BaseModel):
+    novo_nome: str
+
 # Resposta com dados da disciplina. Ao devolver a matéria para a tela, adiciona o id gerado pelo PostgreSQL.
 class DisciplinaResponse(BaseModel):
     nome: str

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import api from '../services/api';
 
 export default function Cadastro() {
   const navigate = useNavigate();
@@ -7,25 +8,58 @@ export default function Cadastro() {
     nome: '',
     email: '',
     senha: '',
-    role: 'ALUNO', // Alinhado aos enums do back: ALUNO, PROFESSOR, COORDENADOR
+    role: 'ALUNO',
     matricula: '',
   });
+  const [loading, setLoading] = useState(false);
+  const [erro, setErro] = useState('');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setErro('');
+    setLoading(true);
 
-    if (formData.role === 'ALUNO' && !formData.matricula.trim()) {
-      alert('A matrícula é obrigatória para cadastro de alunos.');
-      return;
+    try {
+      if (formData.role === 'ALUNO') {
+        if (!formData.matricula.trim()) {
+          setErro('A matrícula é obrigatória para alunos.');
+          setLoading(false);
+          return;
+        }
+        await api.post('/auth/register/aluno', {
+          nome: formData.nome,
+          email: formData.email,
+          senha: formData.senha,
+          matricula: formData.matricula.trim(),
+        });
+      } else if (formData.role === 'PROFESSOR') {
+        await api.post('/auth/register/professor', {
+          nome: formData.nome,
+          email: formData.email,
+          senha: formData.senha,
+        });
+      } else if (formData.role === 'COORDENADOR') {
+        await api.post('/auth/register/coordenador', {
+          nome: formData.nome,
+          email: formData.email,
+          senha: formData.senha,
+        });
+      }
+
+      alert('Cadastro realizado com sucesso! Faça login com suas credenciais.');
+      navigate('/login');
+    } catch (err) {
+      console.error(err);
+      const msg = err.response?.data?.detail || 'Falha ao registrar usuário.';
+      setErro(msg);
+    } finally {
+      setLoading(false);
     }
-
-    alert(`Conta de ${formData.role} registrada com sucesso! Faça seu login.`);
-    navigate('/login');
   };
 
   return (
@@ -35,6 +69,12 @@ export default function Cadastro() {
           <h1 className="text-3xl font-extrabold text-blue-900">SAEI</h1>
           <p className="mt-1 text-sm text-slate-500">Criar nova conta de usuário</p>
         </div>
+
+        {erro && (
+          <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 border border-red-200">
+            {erro}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -64,7 +104,6 @@ export default function Cadastro() {
             </select>
           </div>
 
-          {/* Campo condicional: Obrigatório apenas para alunos */}
           {formData.role === 'ALUNO' && (
             <div>
               <label className="block text-sm font-medium text-slate-700">Matrícula Escolar</label>
@@ -108,9 +147,10 @@ export default function Cadastro() {
 
           <button
             type="submit"
-            className="w-full rounded-lg bg-green-600 px-4 py-2.5 font-semibold text-white transition hover:bg-green-700"
+            disabled={loading}
+            className="w-full rounded-lg bg-green-600 px-4 py-2.5 font-semibold text-white transition hover:bg-green-700 disabled:opacity-50"
           >
-            Cadastrar Conta
+            {loading ? 'Cadastrando...' : 'Cadastrar Conta'}
           </button>
         </form>
 
