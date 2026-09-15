@@ -6,17 +6,25 @@ export default function Cadastro() {
   const [formData, setFormData] = useState({
     nome: '',
     email: '',
-    password: '',
-    role: 'aluno',
+    senha: '',
+    role: 'ALUNO', // Alinhado aos enums do back: ALUNO, PROFESSOR, COORDENADOR
+    matricula: '',
   });
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    alert(`Usuário registrado com sucesso como ${formData.role.toUpperCase()}! Faça seu login.`);
+
+    if (formData.role === 'ALUNO' && !formData.matricula.trim()) {
+      alert('A matrícula é obrigatória para cadastro de alunos.');
+      return;
+    }
+
+    alert(`Conta de ${formData.role} registrada com sucesso! Faça seu login.`);
     navigate('/login');
   };
 
@@ -50,11 +58,27 @@ export default function Cadastro() {
               onChange={handleChange}
               className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
-              <option value="aluno">Aluno</option>
-              <option value="professor">Professor</option>
-              <option value="coordenador">Coordenador Pedagógico</option>
+              <option value="ALUNO">Aluno</option>
+              <option value="PROFESSOR">Professor</option>
+              <option value="COORDENADOR">Coordenador Pedagógico</option>
             </select>
           </div>
+
+          {/* Campo condicional: Obrigatório apenas para alunos */}
+          {formData.role === 'ALUNO' && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700">Matrícula Escolar</label>
+              <input
+                type="text"
+                name="matricula"
+                required
+                placeholder="Ex: 20260199"
+                value={formData.matricula}
+                onChange={handleChange}
+                className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-slate-700">E-mail</label>
@@ -73,10 +97,10 @@ export default function Cadastro() {
             <label className="block text-sm font-medium text-slate-700">Senha</label>
             <input
               type="password"
-              name="password"
+              name="senha"
               required
               placeholder="Crie uma senha forte"
-              value={formData.password}
+              value={formData.senha}
               onChange={handleChange}
               className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
