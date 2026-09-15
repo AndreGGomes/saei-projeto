@@ -365,13 +365,13 @@ export default function DashboardCoordenador() {
                             }}
                             className="text-blue-600 dark:text-blue-400 hover:underline text-xs font-semibold"
                           >
-                            ✏️ Editar Nome
+                            Editar Nome
                           </button>
                           <button
                             onClick={() => handleDeletarDisciplina(disc.codigo)}
                             className="text-red-500 dark:text-red-400 hover:underline text-xs font-semibold"
                           >
-                            🗑️ Excluir
+                            Excluir
                           </button>
                         </td>
                       </tr>
