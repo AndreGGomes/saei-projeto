@@ -30,10 +30,10 @@ class AcompanhamentoService:
     def vincular_tutor(self, dados: TutorarAlunoIn, usuario_logado: Usuario):
         self._verificar_permissao_coordenador(usuario_logado)
 
-        # Confere se o aluno existe
-        aluno = self.aluno_repo.buscar_por_usuario_id(dados.aluno_usuario_id)
+        # Confere se o aluno existe, pela matrícula
+        aluno = self.aluno_repo.buscar_por_matricula(dados.aluno_matricula)
         if not aluno:
-            raise RecursoNaoEncontradoError("Aluno não encontrado.")
+            raise RecursoNaoEncontradoError(f"Aluno com matrícula '{dados.aluno_matricula}' não encontrado.")
 
         # Checa se o coordenador já não era o tutor desse aluno, evitando requisições duplicadas (VinculoJaExistenteError).
         if aluno.tutor_id == usuario_logado.id:
@@ -48,28 +48,37 @@ class AcompanhamentoService:
         # Se for Coordenador: Busca na tabela alunos quem tem tutor_id == coordenador.id e formata a lista buscando o nome na tabela de usuários (aluno.usuario.nome).
         if usuario_logado.role == UserRole.COORDENADOR:
             tutorados = self.aluno_repo.listar_por_tutor(usuario_logado.id)
-            tutorados_formatados = []
-            for aluno in tutorados:
-                tutorados_formatados.append({
-                    "usuario_id": aluno.usuario_id,
+            tutorados_formatados = [
+                {
                     "nome": aluno.usuario.nome,   
                     "matricula": aluno.matricula
-                })
+                }
+                for aluno in tutorados
+            ]
             return AcompanhamentoResponse(tipo="COORDENADOR", tutorados=tutorados_formatados)
 
         # Se for Professor: Busca na tabela matriculas todos os vínculos atribuídos a ele e formata a resposta aninhando o aluno correspondente (m.aluno.usuario.nome).
         elif usuario_logado.role == UserRole.PROFESSOR:
             matriculas = self.matricula_repo.listar_por_professor(usuario_logado.id)
-            matriculas_formatadas = []
-            for m in matriculas:
-                matriculas_formatadas.append({
+            matriculas_formatadas = [
+                {
                     "id": m.id,
                     "aluno": {
-                        "usuario_id": m.aluno.usuario_id,
-                        "nome": m.aluno.usuario.nome, 
+                        "nome": m.aluno.usuario.nome,
                         "matricula": m.aluno.matricula
+                    },
+                    "professor": {
+                        "nome": m.professor.usuario.nome,
+                        "email": m.professor.usuario.email
+                    },
+                    "disciplina": {
+                        "id": m.disciplina.id,
+                        "nome": m.disciplina.nome,
+                        "codigo": m.disciplina.codigo
                     }
-                })
+                }
+                for m in matriculas
+            ]
             return AcompanhamentoResponse(tipo="PROFESSOR", matriculas=matriculas_formatadas)
 
         # Porém, Alunos não podem fazer isso

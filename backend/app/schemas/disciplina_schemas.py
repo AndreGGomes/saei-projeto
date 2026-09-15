@@ -9,7 +9,6 @@ class DisciplinaCreate(BaseModel):
 
 # Resposta com dados da disciplina. Ao devolver a matéria para a tela, adiciona o id gerado pelo PostgreSQL.
 class DisciplinaResponse(BaseModel):
-    id: int
     nome: str
     codigo: str
     class Config:

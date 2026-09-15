@@ -1,25 +1,40 @@
-# Controla os dados para registrar, alterar e listar os vínculos escolares diretos (Aluno + Professor + Matéria).
+# Contrato de comunicação para a gestão de matrículas e vínculos acadêmicos baseado em dados humanos
 
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from app.schemas.disciplina_schemas import DisciplinaResponse
 
-# formulário de criação de vínculo. O coordenador envia os IDs do aluno, professor e disciplina.
+# Resumo de saída do aluno
+class AlunoResumoResponse(BaseModel):
+    nome: str
+    matricula: str
+
+    class Config:
+        from_attributes = True
+
+# Resumo de saída do professor
+class ProfessorResumoResponse(BaseModel):
+    nome: str
+    email: EmailStr
+
+    class Config:
+        from_attributes = True
+
+# Formulário de criação de matrícula legível
 class MatriculaCreate(BaseModel):
-    aluno_id: int
-    professor_id: int
-    disciplina_id: int
+    aluno_matricula: str
+    professor_email: EmailStr
+    disciplina_codigo: str
 
-# formulário de troca de professor. Se o coordenador precisar substituir o professor de uma matrícula existente, a rota recebe apenas o novo_professor_id, sem obrigar a enviar aluno ou disciplina novamente.
+# Formulário de substituição de professor
 class MatriculaUpdateProfessor(BaseModel):
-    novo_professor_id: int
+    novo_professor_email: EmailStr
 
-# Resposta com os dados da matrícula
+# Contrato de retorno de uma matrícula
 class MatriculaResponse(BaseModel):
     id: int
-    aluno_id: int
-    professor_id: int
-    disciplina_id: int
-    disciplina: DisciplinaResponse | None = None
-    
+    aluno: AlunoResumoResponse
+    professor: ProfessorResumoResponse
+    disciplina: DisciplinaResponse
+
     class Config:
         from_attributes = True

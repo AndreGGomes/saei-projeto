@@ -1,17 +1,14 @@
 # Guichê de Acompanhamento Inclusivo e Tutoria. Permite que coordenadores assumam a tutoria de alunos e alimenta a tela de painel pessoal (/meus-vinculos).
 
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, status
 from app.models import Usuario
-from app.schemas.acompanhamento_schemas import (
-    TutorarAlunoIn, MatriculaResponse, AcompanhamentoResponse
-)
+from app.schemas.acompanhamento_schemas import TutorarAlunoIn, AcompanhamentoResponse
 from app.api.dependencies import get_current_user, get_acompanhamento_service
 from app.services.acompanhamento_service import AcompanhamentoService
-from app.core.exceptions import PermissaoNegadaError, RecursoNaoEncontradoError, VinculoJaExistenteError
 
 router = APIRouter(prefix="/acompanhamento")
 
-# O coordenador logado passa o aluno_usuario_id e vira o tutor oficial do estudante.
+# O coordenador logado passa a matrícula do aluno e vira o tutor oficial do estudante.
 @router.post("/definir-coordenador-tutor", status_code=status.HTTP_200_OK)
 def definir_tutor(
     dados: TutorarAlunoIn,

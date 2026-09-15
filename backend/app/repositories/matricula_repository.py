@@ -1,6 +1,6 @@
 # Controla a tabela de vínculos escolares (matriculas), conectando Aluno, Professor e Disciplina.
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.models import Matricula
 
 class MatriculaRepository:
@@ -9,7 +9,16 @@ class MatriculaRepository:
 
     # Busca uma matrícula específica pelo seu ID
     def buscar_por_id(self, matricula_id: int) -> Matricula | None:
-        return self.db.query(Matricula).filter(Matricula.id == matricula_id).first()
+        return (
+            self.db.query(Matricula)
+            .options(
+                joinedload(Matricula.aluno),
+                joinedload(Matricula.professor),
+                joinedload(Matricula.disciplina)
+            )
+            .filter(Matricula.id == matricula_id)
+            .first()
+        )
 
     # Verifica se este aluno já possui matrícula nesta matéria, para evitar duplicidade de matrícula na mesma disciplina
     def buscar_por_aluno_e_disciplina(self, aluno_id: int, disciplina_id: int) -> Matricula | None:
@@ -20,7 +29,12 @@ class MatriculaRepository:
 
     # Lista todas as matrículas atribuídas a este professor
     def listar_por_professor(self, professor_id: int) -> list[Matricula]:
-        return self.db.query(Matricula).filter(Matricula.professor_id == professor_id).all()
+        return (
+            self.db.query(Matricula)
+            .options(joinedload(Matricula.aluno))
+            .filter(Matricula.professor_id == professor_id)
+            .all()
+        )
 
     # Cria uma nova matrícula, insere no banco, confirma e recarrega
     def criar(self, aluno_id: int, professor_id: int, disciplina_id: int) -> Matricula:
@@ -32,14 +46,14 @@ class MatriculaRepository:
         self.db.add(matricula)
         self.db.commit()
         self.db.refresh(matricula)
-        return matricula
+        return self.buscar_por_id(matricula.id)
 
     # Atualiza quem é o professor responsável por essa matrícula
     def atualizar_professor(self, matricula: Matricula, novo_professor_id: int) -> Matricula:
         matricula.professor_id = novo_professor_id
         self.db.commit()
         self.db.refresh(matricula)
-        return matricula
+        return self.buscar_por_id(matricula.id)
 
     # Deleta a matrícula
     def deletar(self, matricula: Matricula):
@@ -47,5 +61,13 @@ class MatriculaRepository:
         self.db.commit()
 
     # Lista todas as matrículas
-    def listar_todas(self):
-        return self.db.query(Matricula).all()
+    def listar_todas(self) -> list[Matricula]:
+        return (
+            self.db.query(Matricula)
+            .options(
+                joinedload(Matricula.aluno),
+                joinedload(Matricula.professor),
+                joinedload(Matricula.disciplina)
+            )
+            .all()
+        )
