@@ -1,6 +1,6 @@
 version: '3.8'
 
-services: # abre a lista dos containers q serão criados
+services:
   # --- BANCO DE DADOS ---
   db:
     image: postgres:15-alpine
@@ -12,7 +12,7 @@ services: # abre a lista dos containers q serão criados
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data # O Postgres salva todos os arquivos binários das tabelas nessa pasta interna. Sem essa linha, no momento em que o Docker fosse desligado, todos os usuários, cadastros e dados criados sumiriam.
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - saei_network
 
@@ -25,14 +25,28 @@ services: # abre a lista dos containers q serão criados
     ports:
       - "8000:8000" # Acesse a API em http://localhost:8000
     environment:
-      # O host aqui é 'db' (o nome do serviço acima), NÃO é localhost!
       DATABASE_URL: postgresql://saei_user:saei_password@db:5432/saei_db
       SECRET_KEY: dcvEek8zldAUpcB3OT9h3nczSpB3nq35v7WMXtUSgOB
     volumes:
-      # Espelha a pasta local para o container (Hot-Reload em tempo real)
       - ./backend:/app
     depends_on:
-      - db # serviço backend depende q o serviço db esteja ligado primeiro
+      - db
+    networks:
+      - saei_network
+
+  # --- FRONTEND (REACT + VITE) ---
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: saei_frontend
+    ports:
+      - "5173:5173" # Acesse o React em http://localhost:5173
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules # Impede que sua máquina local sobrescreva as dependências do container
+    depends_on:
+      - backend
     networks:
       - saei_network
 
