@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
@@ -17,6 +17,29 @@ export default function Cadastro() {
   const [mostrarConfirmarSenha, setMostrarConfirmarSenha] = useState(false);
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState('');
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+      setIsDarkMode(true);
+      document.documentElement.classList.add('dark');
+    } else {
+      setIsDarkMode(false);
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+
+  const setTheme = (dark) => {
+    setIsDarkMode(dark);
+    if (dark) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -27,9 +50,8 @@ export default function Cadastro() {
     e.preventDefault();
     setErro('');
 
-    // Validação de senhas iguais
     if (formData.senha !== formData.confirmarSenha) {
-      setErro('As senhas digitadas não conferem. Por favor, digite a mesma senha nos dois campos.');
+      setErro('As senhas digitadas não conferem.');
       return;
     }
 
@@ -67,7 +89,7 @@ export default function Cadastro() {
         });
       }
 
-      alert('Cadastro realizado com sucesso! Faça login com suas credenciais.');
+      alert('Cadastro realizado com sucesso! Faça login.');
       navigate('/login');
     } catch (err) {
       console.error(err);
@@ -79,22 +101,48 @@ export default function Cadastro() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl">
+    <div className="relative flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 p-4 transition-colors duration-300">
+      <div className="absolute top-6 right-6 flex items-center bg-white dark:bg-slate-800 rounded-full p-1 shadow-md border border-slate-200 dark:border-slate-700 space-x-1">
+        <button
+          onClick={() => setTheme(false)}
+          className={`flex items-center justify-center w-8 h-8 rounded-full transition ${
+            !isDarkMode ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+          }`}
+          title="Modo Claro"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
+          </svg>
+        </button>
+
+        <button
+          onClick={() => setTheme(true)}
+          className={`flex items-center justify-center w-8 h-8 rounded-full transition ${
+            isDarkMode ? 'bg-slate-700 text-yellow-400 shadow' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+          }`}
+          title="Modo Escuro"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
+          </svg>
+        </button>
+      </div>
+
+      <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 p-8 shadow-xl border border-slate-100 dark:border-slate-800 transition-colors duration-300">
         <div className="mb-6 text-center">
-          <h1 className="text-3xl font-extrabold text-blue-900">SAEI</h1>
-          <p className="mt-1 text-sm text-slate-500">Criar nova conta de usuário</p>
+          <h1 className="text-3xl font-extrabold text-blue-900 dark:text-blue-400">SAEI</h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Criar nova conta de usuário</p>
         </div>
 
         {erro && (
-          <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 border border-red-200">
+          <div className="mb-4 rounded-lg bg-red-50 dark:bg-red-950/50 p-3 text-sm text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900">
             {erro}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700">Nome Completo</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Nome Completo</label>
             <input
               type="text"
               name="nome"
@@ -102,17 +150,17 @@ export default function Cadastro() {
               placeholder="Digite seu nome completo"
               value={formData.nome}
               onChange={handleChange}
-              className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-sm text-slate-800 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700">Papel de Acesso</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Papel de Acesso</label>
             <select
               name="role"
               value={formData.role}
               onChange={handleChange}
-              className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-sm text-slate-800 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               <option value="ALUNO">Aluno</option>
               <option value="PROFESSOR">Professor</option>
@@ -122,7 +170,7 @@ export default function Cadastro() {
 
           {formData.role === 'ALUNO' && (
             <div>
-              <label className="block text-sm font-medium text-slate-700">Matrícula Escolar</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Matrícula Escolar</label>
               <input
                 type="text"
                 name="matricula"
@@ -130,13 +178,13 @@ export default function Cadastro() {
                 placeholder="Ex: 20260199"
                 value={formData.matricula}
                 onChange={handleChange}
-                className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-sm text-slate-800 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
           )}
 
           <div>
-            <label className="block text-sm font-medium text-slate-700">E-mail</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">E-mail</label>
             <input
               type="email"
               name="email"
@@ -144,13 +192,12 @@ export default function Cadastro() {
               placeholder="seuemail@escola.edu.br"
               value={formData.email}
               onChange={handleChange}
-              className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-sm text-slate-800 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
 
-          {/* Campo Senha com Olhinho */}
           <div>
-            <label className="block text-sm font-medium text-slate-700">Senha</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Senha</label>
             <div className="relative mt-1">
               <input
                 type={mostrarSenha ? 'text' : 'password'}
@@ -159,12 +206,12 @@ export default function Cadastro() {
                 placeholder="Crie uma senha forte"
                 value={formData.senha}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-slate-300 p-2.5 pr-10 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 pr-10 text-sm text-slate-800 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
               <button
                 type="button"
                 onClick={() => setMostrarSenha(!mostrarSenha)}
-                className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 focus:outline-none"
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none"
                 tabIndex="-1"
               >
                 {mostrarSenha ? (
@@ -181,9 +228,8 @@ export default function Cadastro() {
             </div>
           </div>
 
-          {/* Campo Repetir Senha com Olhinho */}
           <div>
-            <label className="block text-sm font-medium text-slate-700">Confirmar Senha</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Confirmar Senha</label>
             <div className="relative mt-1">
               <input
                 type={mostrarConfirmarSenha ? 'text' : 'password'}
@@ -192,12 +238,12 @@ export default function Cadastro() {
                 placeholder="Repita sua senha"
                 value={formData.confirmarSenha}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-slate-300 p-2.5 pr-10 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 pr-10 text-sm text-slate-800 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
               <button
                 type="button"
                 onClick={() => setMostrarConfirmarSenha(!mostrarConfirmarSenha)}
-                className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 focus:outline-none"
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none"
                 tabIndex="-1"
               >
                 {mostrarConfirmarSenha ? (
@@ -217,15 +263,15 @@ export default function Cadastro() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-green-600 px-4 py-2.5 font-semibold text-white transition hover:bg-green-700 disabled:opacity-50"
+            className="w-full rounded-lg bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 px-4 py-2.5 font-semibold text-white transition disabled:opacity-50"
           >
             {loading ? 'Cadastrando...' : 'Cadastrar Conta'}
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-slate-600">
+        <p className="mt-6 text-center text-sm text-slate-600 dark:text-slate-400">
           Já possui conta?{' '}
-          <Link to="/login" className="font-semibold text-blue-600 hover:underline">
+          <Link to="/login" className="font-semibold text-blue-600 dark:text-blue-400 hover:underline">
             Voltar ao Login
           </Link>
         </p>
