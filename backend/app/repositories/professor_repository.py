@@ -20,4 +20,10 @@ class ProfessorRepository:
             .first()
         )
 
-    
+    # Lista todos os professores
+    def listar_todos(self) -> list[Professor]:
+        return(
+            self.db.query(Professor)
+            .join(Usuario, Professor.usuario_id == Usuario.id)
+            .all()
+        )  

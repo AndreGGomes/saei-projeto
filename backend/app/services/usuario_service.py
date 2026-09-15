@@ -7,6 +7,7 @@ from app.schemas.usuario_schemas import AlunoCreate, FuncionarioCreate
 from app.core.config import settings
 from app.repositories.usuario_repository import UsuarioRepository
 from app.repositories.aluno_repository import AlunoRepository
+from app.repositories.professor_repository import ProfessorRepository
 from app.core.exceptions import (
     MatriculaObrigatoriaError, MatriculaJaCadastradaError, 
     EmailJaEmUsoError, MultiplasContasError, 
@@ -15,9 +16,15 @@ from app.core.exceptions import (
 
 class UsuarioService:
     # Construtor do serviço recebendo os dois repositórios por injeção de dependência.
-    def __init__(self, usuario_repo: UsuarioRepository, aluno_repo: AlunoRepository):
+    def __init__(
+            self, 
+            usuario_repo: UsuarioRepository, 
+            aluno_repo: AlunoRepository,
+            professor_repo: ProfessorRepository
+        ):
         self.usuario_repo = usuario_repo
         self.aluno_repo = aluno_repo
+        self.professor_repo = professor_repo
 
     # --- MÉTODOS PÚBLICOS ESPECÍFICOS ---
 
@@ -44,6 +51,18 @@ class UsuarioService:
         perfil = Professor()
         
         return self.usuario_repo.criar_usuario_com_perfil(usuario_base, perfil)
+
+    # Listagem de professores
+    def listar_professores(self) -> list[dict]:
+        professores = self.professor_repo.listar_todos()
+        return [
+            {
+                "nome": prof.usuario.nome,
+                "email": prof.usuario.email
+            }
+            for prof in professores
+        ]
+
 
     # Idêntico ao do professor, porém com coordenador
     def registrar_coordenador(self, dados: FuncionarioCreate) -> Usuario:

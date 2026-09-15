@@ -25,3 +25,7 @@ class DisciplinaRepository:
     def deletar(self, disciplina: Disciplina):
         self.db.delete(disciplina)
         self.db.commit()
+
+    # Consulta todas as disciplinas ordenadas por nome
+    def listar_todas(self) -> list[Disciplina]:
+        return self.db.query(Disciplina).order_by(Disciplina.nome.asc()).all()

@@ -39,7 +39,7 @@ def deletar_matricula(
     service.deletar_matricula(matricula_id, current_user)
 
 # Lista as matrículas
-@router.get("/todas-matriculas", response_model=List[MatriculaResponse])
+@router.get("/", response_model=List[MatriculaResponse])
 def listar_matriculas(
     service: MatriculaService = Depends(get_matricula_service),
     current_user: Usuario = Depends(get_current_user)

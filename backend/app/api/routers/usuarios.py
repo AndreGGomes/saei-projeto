@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, status
 from fastapi.security import OAuth2PasswordRequestForm
 
+from typing import List
 from app.models import Usuario, UserRole
 from app.schemas import auth_schemas, usuario_schemas
 from app.api.dependencies import get_current_user, get_usuario_service
@@ -65,3 +66,12 @@ def get_user(
 ):
     """Retorna dados públicos de um usuário específico."""
     return service.buscar_usuario(user_id)
+
+# Rota que retorna a lista de todos os professores cadastrados
+@router.get("/professores", response_model=List[usuario_schemas.ProfessorResumoPublico], status_code=status.HTTP_200_OK)
+def listar_professores(
+    service: UsuarioService = Depends(get_usuario_service),
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Retorna a lista de todos os professores cadastrados para seleção na coordenação."""
+    return service.listar_professores()

@@ -168,7 +168,7 @@ export default function DashboardCoordenador() {
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
-            Disciplinas (UC06)
+            Disciplinas
           </button>
           <button
             onClick={() => setActiveTab('matriculas')}
