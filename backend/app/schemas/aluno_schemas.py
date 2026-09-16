@@ -13,3 +13,15 @@ class AlunoDetalhesResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+# Entrada para assumir tutoria via matrícula
+class TutorarAlunoIn(BaseModel):
+    aluno_matricula: str
+
+# Resposta pública do aluno tutorado
+class AlunoResponse(BaseModel):
+    nome: str
+    matricula: str
+
+    class Config:
+        from_attributes = True
