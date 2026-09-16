@@ -13,9 +13,11 @@ from app.repositories.professor_repository import ProfessorRepository
 from app.repositories.disciplina_repository import DisciplinaRepository
 from app.repositories.matricula_repository import MatriculaRepository
 
-from app.services.acompanhamento_service import AcompanhamentoService
 from app.services.disciplina_service import DisciplinaService
 from app.services.matricula_service import MatriculaService
+from app.repositories.coordenador_repository import CoordenadorRepository
+from app.services.aluno_service import AlunoService
+from app.services.coordenador_service import CoordenadorService
 
 # Fábrica do serviço de usuário. O FastAPI chama get_db() para pegar a conexão com o banco, instancia o UsuarioRepository e o AlunoRepository com ela, e injeta os dois no UsuarioService. Quem pedir service = Depends(get_usuario_service) na rota já recebe o serviço pronto.
 def get_usuario_service(db: Session = Depends(get_db)) -> UsuarioService:
@@ -44,13 +46,6 @@ def get_current_user(
 
 #--- os outros serviços, monta cada um com seus respectivos repositórios compartilhando a mesma sessão db da requisição.
 # Construtor do Service de Acompanhamento
-def get_acompanhamento_service(db: Session = Depends(get_db)) -> AcompanhamentoService:
-    return AcompanhamentoService(
-        aluno_repo=AlunoRepository(db),
-        professor_repo=ProfessorRepository(db),
-        disciplina_repo=DisciplinaRepository(db),
-        matricula_repo=MatriculaRepository(db)
-    )
 
 # Construtor do Service de Disciplina
 def get_disciplina_service(db: Session = Depends(get_db)) -> DisciplinaService:
@@ -62,5 +57,15 @@ def get_matricula_service(db: Session = Depends(get_db)) -> MatriculaService:
         matricula_repo=MatriculaRepository(db),
         professor_repo=ProfessorRepository(db),
         disciplina_repo=DisciplinaRepository(db),
+        aluno_repo=AlunoRepository(db)
+    )
+
+def get_coordenador_service(db: Session = Depends(get_db)) -> CoordenadorService:
+    return CoordenadorService(
+        coordenador_repo=CoordenadorRepository(db)
+    )
+
+def get_aluno_service(db: Session = Depends(get_db)) -> AlunoService:
+    return AlunoService(
         aluno_repo=AlunoRepository(db)
     )

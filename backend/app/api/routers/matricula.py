@@ -3,7 +3,7 @@
 from typing import List
 from fastapi import APIRouter, Depends, status
 from app.models import Usuario
-from app.schemas.matricula_schemas import MatriculaCreate, MatriculaUpdateProfessor, MatriculaResponse
+from app.schemas.matricula_schemas import MatriculaCreate, MatriculaUpdateProfessor, MatriculaResponse, MatriculasProfessorResponse
 from app.api.dependencies import get_current_user, get_matricula_service
 from app.services.matricula_service import MatriculaService
 
@@ -45,3 +45,11 @@ def listar_matriculas(
     current_user: Usuario = Depends(get_current_user)
 ):
     return service.listar_todas(current_user)
+
+# Se o usuário for professor, lista as matriculas vinculadas e ele
+@router.get("/minhas-matriculas-professor", response_model=MatriculasProfessorResponse)
+def listar_vinculos(
+    service: MatriculaService = Depends(get_matricula_service),
+    current_user: Usuario = Depends(get_current_user)
+):
+    return service.listar_sob_responsabilidade_por_usuario_logado_professor(current_user)

@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routers import acompanhamento, disciplinas, matricula, usuarios
+from app.api.routers import disciplinas, matricula, usuarios, aluno, coordenador
 from app.api.exception_handlers import registrar_handlers_de_excecao
 
 # Cria o servidor web da aplicação
@@ -30,7 +30,8 @@ app.add_middleware(
 # Junta todas as rotas e regras criadas no projeto sob um único servidor.
 registrar_handlers_de_excecao(app)
 app.include_router(usuarios.router)
-app.include_router(acompanhamento.router)
+app.include_router(aluno.router)
+app.include_router(coordenador.router)
 app.include_router(matricula.router)
 app.include_router(disciplinas.router)
 

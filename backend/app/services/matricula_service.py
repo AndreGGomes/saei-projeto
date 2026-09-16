@@ -1,7 +1,7 @@
 # Gerencia os vínculos entre estudantes, professores e matérias. Garante que os três elementos existam antes de efetuar o vínculo e permite a troca de professor responsável.
 
 from app.models import Usuario, UserRole
-from app.schemas.matricula_schemas import MatriculaCreate, MatriculaResponse
+from app.schemas.matricula_schemas import MatriculaCreate, MatriculaResponse, MatriculasProfessorResponse
 from app.repositories.matricula_repository import MatriculaRepository
 from app.repositories.professor_repository import ProfessorRepository
 from app.repositories.disciplina_repository import DisciplinaRepository
@@ -108,3 +108,36 @@ class MatriculaService:
         matriculas = self.matricula_repo.listar_todas()
         return [self._formatar_matricula_response(m) for m in matriculas]
     #---
+
+    # Listagem de matrículas do Professor
+    def listar_sob_responsabilidade_por_usuario_logado_professor(
+        self, usuario_logado: Usuario
+    ) -> MatriculasProfessorResponse:
+        
+        if usuario_logado.role == UserRole.PROFESSOR:
+            matriculas = self.matricula_repo.listar_por_professor(usuario_logado.id)
+            matriculas_formatadas = [
+                {
+                    "id": m.id,
+                    "aluno": {
+                        "nome": m.aluno.usuario.nome,
+                        "matricula": m.aluno.matricula
+                    },
+                    "professor": {
+                        "nome": m.professor.usuario.nome,
+                        "email": m.professor.usuario.email
+                    },
+                    "disciplina": {
+                        "id": m.disciplina.id,
+                        "nome": m.disciplina.nome,
+                        "codigo": m.disciplina.codigo
+                    }
+                }
+                for m in matriculas
+            ]
+            # Retorna o schema específico do Professor
+            return MatriculasProfessorResponse(
+                matriculas=matriculas_formatadas
+            )
+        else:
+            raise PermissaoNegadaError("Apenas professores podem visualizar a lista com suas próprias matrículas.")

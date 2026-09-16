@@ -1,5 +1,7 @@
 # Contrato de comunicação para a gestão de matrículas e vínculos acadêmicos baseado em dados humanos
 
+from typing import List
+
 from pydantic import BaseModel, EmailStr
 from app.schemas.disciplina_schemas import DisciplinaResponse
 
@@ -38,3 +40,9 @@ class MatriculaResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class MatriculasProfessorResponse(BaseModel):
+    matriculas: List[MatriculaResponse]
+
+    class Config:
+            from_attributes = True
