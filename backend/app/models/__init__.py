@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Enum as SAEnum
+from sqlalchemy import Column, DateTime, Integer, String, ForeignKey, Enum as SAEnum, func
 from sqlalchemy.orm import relationship
 from app.db.database import Base
 import enum
@@ -126,3 +126,26 @@ class Matricula(Base):
         back_populates="matriculas"
     )
     disciplina = relationship("Disciplina", back_populates="matriculas")
+
+class TipoDocumento(str, enum.Enum):
+    LAUDO_MEDICO = "LAUDO_MEDICO"
+    ATIVIDADE = "ATIVIDADE"
+    PLANO_DE_AULA = "PLANO_DE_AULA"
+    OUTROS = "OUTROS"
+
+class Documento(Base):
+    __tablename__ = "documentos"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    titulo = Column(String, nullable=False)
+    tipo = Column(SAEnum(TipoDocumento), nullable=False)
+    caminho_arquivo = Column(String, nullable=False) 
+    
+    data_upload = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relacionamentos
+    matricula_id = Column(Integer, ForeignKey("matriculas.id"), nullable=False)
+    remetente_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+
+    matricula = relationship("Matricula", backref="documentos")
+    remetente = relationship("Usuario")
