@@ -1,11 +1,10 @@
 #!/bin/bash
 
-echo "🚀 [Backend] Aguardando o banco de dados ficar pronto..."
-sleep 5 # Pausa simples para garantir que o Postgres inicializou
+# Interrompe o script imediatamente se qualquer comando falhar
+set -e
 
-echo "🔄 [Backend] Aplicando migrações do Alembic..."
+echo "🔄 [Backend] Banco saudável! Aplicando migrações do Alembic..."
 alembic upgrade head
 
 echo "🔥 [Backend] Iniciando o servidor FastAPI com Hot-Reload..."
-# O --reload faz o servidor reiniciar automaticamente quando você salva um arquivo .py
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload

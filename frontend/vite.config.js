@@ -8,4 +8,11 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  server: {
+    host: '0.0.0.0',
+    port: 5173,
+    watch: {
+      usePolling: true, // Garante que salvar o arquivo no seu VS Code atualize a tela no navegador
+    },
+  },
 })
