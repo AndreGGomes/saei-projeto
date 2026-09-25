@@ -30,6 +30,14 @@ export default function DashboardCoordenador() {
   const [matriculaEditando, setMatriculaEditando] = useState(null);
   const [novoProfessorEmail, setNovoProfessorEmail] = useState('');
 
+  // Modal de Documentos e Anexos da Matrícula (Para o Coordenador ver e baixar)
+  const [matriculaDocsVisualizando, setMatriculaDocsVisualizando] = useState(null);
+  const [documentosMatricula, setDocumentosMatricula] = useState({
+    enviados_pelo_aluno: [],
+    enviados_pelo_professor: [],
+  });
+  const [loadingDocs, setLoadingDocs] = useState(false);
+
   // 1. CARREGAMENTO E PERSISTÊNCIA DO TEMA (DARK/LIGHT)
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
@@ -87,7 +95,77 @@ export default function DashboardCoordenador() {
     carregarDadosDoBanco();
   }, []);
 
-  // 3. AÇÕES DE DISCIPLINA
+  // 3. CARREGAR DOCUMENTOS DE UMA MATRÍCULA SELECIONADA
+  const abrirModalDocumentos = async (matricula) => {
+    setMatriculaDocsVisualizando(matricula);
+    setLoadingDocs(true);
+    try {
+      const res = await api.get(`/documentos/matricula/${matricula.id}`);
+      setDocumentosMatricula({
+        enviados_pelo_aluno: res.data.enviados_pelo_aluno || [],
+        enviados_pelo_professor: res.data.enviados_pelo_professor || [],
+      });
+    } catch (err) {
+      console.error('Erro ao buscar documentos:', err);
+      alert(err.response?.data?.detail || 'Erro ao carregar os documentos desta matrícula.');
+    } finally {
+      setLoadingDocs(false);
+    }
+  };
+
+  // 4. DOWNLOAD DE DOCUMENTO COM EXTENSÃO CORRETA (.PDF) E ÍCONE HEROICONS
+  const handleDownloadDocumento = async (docId, titulo) => {
+    try {
+      const response = await api.get(`/documentos/download/${docId}`, {
+        responseType: 'blob',
+      });
+
+      let nomeArquivo = titulo || 'documento';
+      const contentDisposition = response.headers['content-disposition'];
+      if (contentDisposition && contentDisposition.includes('filename=')) {
+        const matches = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (matches && matches[1]) {
+          nomeArquivo = decodeURIComponent(matches[1]);
+        }
+      }
+
+      if (!nomeArquivo.includes('.')) {
+        nomeArquivo = `${nomeArquivo}.pdf`;
+      }
+
+      const blob = new Blob([response.data], {
+        type: response.headers['content-type'] || 'application/pdf',
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', nomeArquivo);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Erro no download:', err);
+      alert(err.response?.data?.detail || 'Erro ao realizar download do documento.');
+    }
+  };
+
+  // 5. DELETAR DOCUMENTO PELO COORDENADOR
+  const handleDeletarDocumento = async (docId) => {
+    if (!confirm('Como coordenador, tem certeza que deseja excluir este documento permanentemente?')) return;
+    try {
+      await api.delete(`/documentos/${docId}`);
+      alert('Documento excluído.');
+      if (matriculaDocsVisualizando) {
+        abrirModalDocumentos(matriculaDocsVisualizando);
+      }
+    } catch (err) {
+      console.error('Erro ao excluir documento:', err);
+      alert(err.response?.data?.detail || 'Erro ao excluir documento.');
+    }
+  };
+
+  // 6. AÇÕES DE DISCIPLINA
   const handleAddDisciplina = async (e) => {
     e.preventDefault();
     try {
@@ -131,7 +209,7 @@ export default function DashboardCoordenador() {
     }
   };
 
-  // 4. AÇÕES DE MATRÍCULA
+  // 7. AÇÕES DE MATRÍCULA
   const handleAddMatricula = async (e) => {
     e.preventDefault();
     try {
@@ -171,7 +249,7 @@ export default function DashboardCoordenador() {
     }
   };
 
-  // 5. AÇÕES DE TUTORIA
+  // 8. AÇÕES DE TUTORIA
   const handleVincularTutor = async (e) => {
     e.preventDefault();
     if (!matriculaTutorar.trim()) return;
@@ -235,6 +313,12 @@ export default function DashboardCoordenador() {
             </button>
           </div>
           <button
+            onClick={carregarDadosDoBanco}
+            className="text-xs bg-blue-800 hover:bg-blue-700 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-2 rounded-lg transition border border-blue-600 dark:border-slate-700 font-semibold"
+          >
+            🔄 Atualizar
+          </button>
+          <button
             onClick={handleLogout}
             className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition shadow"
           >
@@ -294,7 +378,7 @@ export default function DashboardCoordenador() {
                 : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700'
             }`}
           >
-            Matrículas ({matriculas.length})
+            Matrículas & Documentos ({matriculas.length})
           </button>
         </nav>
       </div>
@@ -344,7 +428,6 @@ export default function DashboardCoordenador() {
               Tutoria e Acompanhamento Pedagógico Individual
             </h2>
 
-            {/* Form de Assumir Tutoria */}
             <form
               onSubmit={handleVincularTutor}
               className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow space-y-4 border border-slate-100 dark:border-slate-800"
@@ -374,7 +457,6 @@ export default function DashboardCoordenador() {
               </div>
             </form>
 
-            {/* Listagem de Alunos Tutorados */}
             <div className="bg-white dark:bg-slate-900 rounded-xl shadow overflow-hidden border border-slate-100 dark:border-slate-800">
               <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300">
                 <thead className="bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border-b dark:border-slate-700">
@@ -527,7 +609,7 @@ export default function DashboardCoordenador() {
           </div>
         )}
 
-        {/* 5. ABA MATRÍCULAS */}
+        {/* 5. ABA MATRÍCULAS COM VISUALIZAÇÃO DE DOCUMENTOS */}
         {!loading && activeTab === 'matriculas' && (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Matrículas e Vínculos Escolares</h2>
@@ -624,7 +706,19 @@ export default function DashboardCoordenador() {
                           <p className="font-medium text-slate-800 dark:text-white">{m.professor.nome}</p>
                           <p className="text-xs text-slate-400">{m.professor.email}</p>
                         </td>
-                        <td className="p-4 text-center space-x-3">
+                        <td className="p-4 text-center space-x-2">
+                          {/* BOTÃO PARA VISUALIZAR DOCUMENTOS / LAUDOS */}
+                          <button
+                            onClick={() => abrirModalDocumentos(m)}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold transition shadow-sm inline-flex items-center gap-1"
+                            title="Ver laudos, atividades e planos de aula desta matrícula"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                            </svg>
+                            <span>Anexos</span>
+                          </button>
+
                           <button
                             onClick={() => {
                               setMatriculaEditando(m);
@@ -735,6 +829,163 @@ export default function DashboardCoordenador() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: VISUALIZAR E BAIXAR DOCUMENTOS / LAUDOS (COORDENAÇÃO) */}
+      {matriculaDocsVisualizando && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-2xl p-6 max-w-4xl w-full shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
+            {/* Topo do Modal */}
+            <div className="flex items-center justify-between border-b pb-4 dark:border-slate-800">
+              <div>
+                <h3 className="text-xl font-bold text-slate-800 dark:text-white">
+                  Documentos & Laudos da Matrícula
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Estudante:{' '}
+                  <strong className="text-slate-700 dark:text-slate-200">
+                    {matriculaDocsVisualizando.aluno.nome}
+                  </strong>{' '}
+                  ({matriculaDocsVisualizando.aluno.matricula}) | Disciplina:{' '}
+                  <strong className="text-slate-700 dark:text-slate-200">
+                    {matriculaDocsVisualizando.disciplina.codigo} — {matriculaDocsVisualizando.disciplina.nome}
+                  </strong>
+                </p>
+              </div>
+              <button
+                onClick={() => setMatriculaDocsVisualizando(null)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-white text-xl font-bold p-1"
+                title="Fechar"
+              >
+                ✕
+              </button>
+            </div>
+
+            {loadingDocs ? (
+              <p className="text-center py-10 text-slate-400 animate-pulse">Carregando histórico de anexos...</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* 1. DOCUMENTOS ENVIADOS PELO ALUNO (Laudos Médicos, Entregas) */}
+                <div className="bg-slate-50 dark:bg-slate-800/40 rounded-xl p-4 border border-slate-200 dark:border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between border-b pb-2 dark:border-slate-700">
+                    <h4 className="font-bold text-sm text-slate-800 dark:text-white flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 bg-blue-500 rounded-full"></span>
+                      Enviados pelo Aluno ({documentosMatricula.enviados_pelo_aluno.length})
+                    </h4>
+                    <span className="text-[11px] text-slate-400">Laudos e Entregas</span>
+                  </div>
+
+                  {documentosMatricula.enviados_pelo_aluno.length === 0 ? (
+                    <p className="text-xs text-slate-400 py-6 text-center">Nenhum documento anexado pelo aluno.</p>
+                  ) : (
+                    <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                      {documentosMatricula.enviados_pelo_aluno.map((doc) => (
+                        <div
+                          key={doc.id}
+                          className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm"
+                        >
+                          <div className="pr-2">
+                            <p className="font-semibold text-slate-800 dark:text-white text-xs">{doc.titulo}</p>
+                            <span className="inline-block bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 text-[10px] px-1.5 py-0.5 rounded font-mono mt-1">
+                              {doc.tipo}
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-1.5">
+                            {/* BOTÃO DE DOWNLOAD OFICIAL */}
+                            <button
+                              onClick={() => handleDownloadDocumento(doc.id, doc.titulo)}
+                              className="flex items-center gap-1 text-[11px] bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1.5 rounded-md font-semibold transition shadow-sm"
+                              title="Baixar em PDF"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.5V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                              </svg>
+                              <span>Baixar</span>
+                            </button>
+                            {/* BOTÃO DE EXCLUSÃO */}
+                            <button
+                              onClick={() => handleDeletarDocumento(doc.id)}
+                              className="flex items-center justify-center p-1.5 rounded-md text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/50 transition"
+                              title="Excluir Arquivo"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. DOCUMENTOS ENVIADOS PELO PROFESSOR (Planos de Aula, Atividades) */}
+                <div className="bg-slate-50 dark:bg-slate-800/40 rounded-xl p-4 border border-slate-200 dark:border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between border-b pb-2 dark:border-slate-700">
+                    <h4 className="font-bold text-sm text-slate-800 dark:text-white flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full"></span>
+                      Enviados pelo Professor ({documentosMatricula.enviados_pelo_professor.length})
+                    </h4>
+                    <span className="text-[11px] text-slate-400">Planos e Materiais</span>
+                  </div>
+
+                  {documentosMatricula.enviados_pelo_professor.length === 0 ? (
+                    <p className="text-xs text-slate-400 py-6 text-center">Nenhum documento anexado pelo professor.</p>
+                  ) : (
+                    <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                      {documentosMatricula.enviados_pelo_professor.map((doc) => (
+                        <div
+                          key={doc.id}
+                          className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm"
+                        >
+                          <div className="pr-2">
+                            <p className="font-semibold text-slate-800 dark:text-white text-xs">{doc.titulo}</p>
+                            <span className="inline-block bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-[10px] px-1.5 py-0.5 rounded font-mono mt-1">
+                              {doc.tipo}
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-1.5">
+                            {/* BOTÃO DE DOWNLOAD OFICIAL */}
+                            <button
+                              onClick={() => handleDownloadDocumento(doc.id, doc.titulo)}
+                              className="flex items-center gap-1 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-md font-semibold transition shadow-sm"
+                              title="Baixar em PDF"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.5V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                              </svg>
+                              <span>Baixar</span>
+                            </button>
+                            {/* BOTÃO DE EXCLUSÃO */}
+                            <button
+                              onClick={() => handleDeletarDocumento(doc.id)}
+                              className="flex items-center justify-center p-1.5 rounded-md text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/50 transition"
+                              title="Excluir Arquivo"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end pt-2 border-t dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setMatriculaDocsVisualizando(null)}
+                className="px-5 py-2 text-sm bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold rounded-lg transition"
+              >
+                Fechar Janela
+              </button>
+            </div>
           </div>
         </div>
       )}

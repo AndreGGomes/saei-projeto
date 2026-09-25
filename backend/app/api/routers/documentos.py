@@ -72,10 +72,12 @@ def download_documento(
         usuario_logado=current_user
     )
 
+    media_type = "application/pdf" if nome_arquivo_download.lower().endswith(".pdf") else "application/octet-stream"
+
     return FileResponse(
         path=caminho_fisico,
         filename=nome_arquivo_download,
-        media_type="application/octet-stream"
+        media_type=media_type
     )
 
 # Remove um documento do banco e apaga o arquivo físico do disco.
