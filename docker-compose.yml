@@ -34,7 +34,6 @@ services:
       SECRET_KEY: dcvEek8zldAUpcB3OT9h3nczSpB3nq35v7WMXtUSgOB
     volumes:
       - ./backend:/app
-      - backend_uploads:/app/uploads # Garante persistência segura dos documentos e laudos
     depends_on:
       db:
         condition: service_healthy
