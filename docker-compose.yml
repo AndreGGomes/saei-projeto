@@ -15,6 +15,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - saei_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U saei_user -d saei_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   # --- BACKEND (FASTAPI) ---
   backend:
@@ -27,10 +32,12 @@ services:
     environment:
       DATABASE_URL: postgresql://saei_user:saei_password@db:5432/saei_db
       SECRET_KEY: dcvEek8zldAUpcB3OT9h3nczSpB3nq35v7WMXtUSgOB
+      GEMINI_API_KEY: AQ.Ab8RN6LHzdcwG6t5F8NLxbJRjESqQ5L5OSBikBuE4-Om5SXqfA
     volumes:
       - ./backend:/app
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - saei_network
 
@@ -44,7 +51,7 @@ services:
       - "5173:5173" # Acesse o React em http://localhost:5173
     volumes:
       - ./frontend:/app
-      - /app/node_modules # Impede que sua máquina local sobrescreva as dependências do container
+      - /app/node_modules # Impede que a máquina hospedeira sobrescreva os binários do container
     depends_on:
       - backend
     networks:
@@ -52,6 +59,7 @@ services:
 
 volumes:
   postgres_data:
+  backend_uploads:
 
 networks:
   saei_network:

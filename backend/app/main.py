@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routers import disciplinas, matricula, usuarios, aluno, coordenador
+from app.api.routers import disciplinas, matricula, usuarios, aluno, coordenador, documentos
 from app.api.exception_handlers import registrar_handlers_de_excecao
 
 # Cria o servidor web da aplicação
@@ -34,6 +34,7 @@ app.include_router(aluno.router)
 app.include_router(coordenador.router)
 app.include_router(matricula.router)
 app.include_router(disciplinas.router)
+app.include_router(documentos.router)
 
 # Rota de teste (Health Check) para provar que o servidor está vivo
 @app.get("/")
