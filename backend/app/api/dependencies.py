@@ -12,6 +12,8 @@ from app.repositories.aluno_repository import AlunoRepository
 from app.repositories.professor_repository import ProfessorRepository
 from app.repositories.disciplina_repository import DisciplinaRepository
 from app.repositories.matricula_repository import MatriculaRepository
+from app.repositories.documento_repository import DocumentoRepository
+from app.services.documento_service import DocumentoService
 
 from app.services.disciplina_service import DisciplinaService
 from app.services.matricula_service import MatriculaService
@@ -23,6 +25,7 @@ from app.repositories.documento_repository import DocumentoRepository
 from app.services.documento_permissions import DocumentoPolicy
 from app.services.documento_service import DocumentoService
 from app.services.ia.ia_client import GeminiClient
+
 
 # Fábrica do serviço de usuário. O FastAPI chama get_db() para pegar a conexão com o banco, instancia o UsuarioRepository e o AlunoRepository com ela, e injeta os dois no UsuarioService. Quem pedir service = Depends(get_usuario_service) na rota já recebe o serviço pronto.
 def get_usuario_service(db: Session = Depends(get_db)) -> UsuarioService:
@@ -77,8 +80,9 @@ def get_aluno_service(db: Session = Depends(get_db)) -> AlunoService:
 
 def get_documento_service(db: Session = Depends(get_db)) -> DocumentoService:
     return DocumentoService(
-        repo=DocumentoRepository(db),
         policy=DocumentoPolicy(),
         pdf_extractor=PDFExtractor(),
-        ia_client=GeminiClient()
+        ia_client=GeminiClient(),
+        documento_repo=DocumentoRepository(db),
+        matricula_repo=MatriculaRepository(db)
     )

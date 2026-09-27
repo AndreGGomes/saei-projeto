@@ -11,6 +11,7 @@ export default function Login() {
   const [erro, setErro] = useState('');
   const [isDarkMode, setIsDarkMode] = useState(false);
 
+  // 1. Carrega a preferência de tema salva no navegador
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'dark') {
@@ -22,6 +23,7 @@ export default function Login() {
     }
   }, []);
 
+  // 2. Função para alternar entre Claro e Escuro
   const setTheme = (dark) => {
     setIsDarkMode(dark);
     if (dark) {
@@ -33,12 +35,14 @@ export default function Login() {
     }
   };
 
+  // 3. Submissão do formulário de autenticação
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErro('');
     setLoading(true);
 
     try {
+      // O OAuth2 do FastAPI espera os dados no padrão application/x-www-form-urlencoded
       const params = new URLSearchParams();
       params.append('username', identificador.trim());
       params.append('password', password);
@@ -47,22 +51,27 @@ export default function Login() {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
 
+      // Salva o token JWT no navegador
       const token = response.data.access_token;
       localStorage.setItem('token', token);
 
+      // Consulta o usuário logado para obter seu papel (role) e matrícula
       const userRes = await api.get('/auth/me');
       const user = userRes.data;
       localStorage.setItem('user', JSON.stringify(user));
 
+      // Redireciona o usuário para seu respectivo painel
       if (user.role === 'COORDENADOR') {
         navigate('/coordenador/dashboard');
       } else if (user.role === 'PROFESSOR') {
-        alert(`Bem-vindo, Prof. ${user.nome}! (Painel do professor em desenvolvimento)`);
+        navigate('/professor/dashboard');
+      } else if (user.role === 'ALUNO') {
+        navigate('/aluno/dashboard');
       } else {
-        alert(`Bem-vindo, ${user.nome}! (Painel do aluno em desenvolvimento)`);
+        setErro('Perfil de usuário não reconhecido pelo sistema.');
       }
     } catch (err) {
-      console.error(err);
+      console.error('Erro de autenticação:', err);
       const msg = err.response?.data?.detail || 'Erro ao conectar com o servidor.';
       setErro(msg);
     } finally {
@@ -72,7 +81,7 @@ export default function Login() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 p-4 transition-colors duration-300">
-      {/* Seletor de Tema com Sol e Lua Lado a Lado */}
+      {/* Seletor de Tema (Sol e Lua) */}
       <div className="absolute top-6 right-6 flex items-center bg-slate-200 dark:bg-slate-800 rounded-full p-1 shadow-md border border-slate-300 dark:border-slate-700 space-x-1 z-50">
         <button
           type="button"
@@ -105,21 +114,26 @@ export default function Login() {
         </button>
       </div>
 
+      {/* Cartão de Login */}
       <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 p-8 shadow-xl border border-slate-100 dark:border-slate-800 transition-colors duration-300">
         <div className="mb-6 text-center">
           <h1 className="text-3xl font-extrabold text-blue-900 dark:text-blue-400">SAEI</h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Sistema de Apoio à Educação Inclusiva</p>
         </div>
 
+        {/* Mensagem de Erro */}
         {erro && (
           <div className="mb-4 rounded-lg bg-red-50 dark:bg-red-950/50 p-3 text-sm text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900">
             {erro}
           </div>
         )}
 
+        {/* Formulário */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">E-mail ou Matrícula</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+              E-mail ou Matrícula
+            </label>
             <input
               type="text"
               required
@@ -131,7 +145,9 @@ export default function Login() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Senha</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Senha
+            </label>
             <div className="relative mt-1">
               <input
                 type={mostrarSenha ? 'text' : 'password'}
@@ -148,11 +164,13 @@ export default function Login() {
                 tabIndex="-1"
               >
                 {mostrarSenha ? (
+                  /* Olho Aberto */
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
                   </svg>
                 ) : (
+                  /* Olho Fechado */
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
                   </svg>
