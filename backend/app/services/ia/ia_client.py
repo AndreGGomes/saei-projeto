@@ -1,35 +1,35 @@
 # app/services/ia/ia_client.py
 import os
-from google import genai
-from app.schemas.documento_schemas import ResumoIAResponse
+from groq import Groq
+from app.schemas.documento_schemas import IAResumoInternal
 
-class GeminiClient:
+class GroqClient:
     def __init__(self):
-        # A verificação é mantida para garantir um erro claro caso falte a variável
-        api_key = os.getenv("GEMINI_API_KEY")
+        api_key = os.getenv("GROQ_API_KEY")
         if not api_key:
-            raise ValueError("GEMINI_API_KEY não configurada no ambiente.")
+            raise ValueError("GROQ_API_KEY não configurada no ambiente.")
         
-        # Inicializa o client seguindo o novo padrão da Interactions API
-        # Ele puxa automaticamente a variável de ambiente GEMINI_API_KEY
-        self.client = genai.Client()
+        self.client = Groq(api_key=api_key)
 
-    def processar_resumo_estruturado(self, prompt: str) -> ResumoIAResponse:
-        """Envia o prompt para a IA e converte a resposta JSON para o schema Pydantic."""
+    def processar_resumo_estruturado(self, prompt: str) -> IAResumoInternal:
+        """Envia o prompt para a Groq e converte a resposta JSON para o schema Pydantic."""
         try:
-            # Envia a requisição usando interations.create e passa o schema do Pydantic
-            interaction = self.client.interactions.create(
-                model="gemini-3.8-flash",
-                input=prompt,
-                response_format={
-                    "type": "text",
-                    "mime_type": "application/json",
-                    "schema": ResumoIAResponse.model_json_schema()
-                }
+            chat_completion = self.client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt,
+                    }
+                ],
+                # O Llama 3.3 de 70B é o melhor modelo atual na Groq para seguir estruturas JSON
+                model="qwen/qwen3.8-27b",
+                response_format={"type": "json_object"}
             )
             
-            # Valida e converte o texto retornado diretamente para o Pydantic Schema
-            return ResumoIAResponse.model_validate_json(interaction.output_text)
+            conteudo = chat_completion.choices[0].message.content
+            
+            # Valida e converte a string JSON diretamente para o modelo Pydantic
+            return IAResumoInternal.model_validate_json(conteudo)
             
         except Exception as e:
             raise RuntimeError(f"Falha ao processar dados com a IA: {str(e)}")
