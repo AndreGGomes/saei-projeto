@@ -15,3 +15,22 @@ def listar_vinculos(
     current_user: Usuario = Depends(get_current_user)
 ):
     return service.listar_tutorados(current_user)
+
+# ADICIONAR: Vincular um aluno ao coordenador logado
+@router.post("/tutorados/{aluno_id}", status_code=status.HTTP_201_CREATED)
+def adicionar_tutorado(
+    aluno_id: int,
+    service: CoordenadorService = Depends(get_coordenador_service),
+    current_user: Usuario = Depends(get_current_user)
+):
+    return service.vincular_tutorado(current_user, aluno_id)
+
+# ADICIONAR: Desvincular/remover um aluno da tutoria do coordenador logado
+@router.delete("/tutorados/{aluno_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remover_tutorado(
+    aluno_id: int,
+    service: CoordenadorService = Depends(get_coordenador_service),
+    current_user: Usuario = Depends(get_current_user)
+):
+    service.desvincular_tutorado(current_user, aluno_id)
+    return
