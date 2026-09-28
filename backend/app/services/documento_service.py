@@ -1,17 +1,23 @@
+# app/services/documento_service.py
 import os
 import uuid
 import shutil
 from pathlib import Path
 from fastapi import UploadFile
 
+from app.core.utils.search_helper import buscar_links_por_termos
 from app.models import Usuario, UserRole, Documento, TipoDocumento
 from app.repositories.documento_repository import DocumentoRepository
 from app.repositories.matricula_repository import MatriculaRepository
-from app.schemas.documento_schemas import MatriculaDocumentosResponse, DocumentoResponse
+from app.schemas.documento_schemas import MatriculaDocumentosResponse, DocumentoResponse, ResumoIAResponse
 from app.core.exceptions import (
     PermissaoNegadaError,
     RecursoNaoEncontradoError
 )
+from app.core.utils.pdf_extractor import PDFExtractor
+from app.services.ia.ia_client import GroqClient
+from app.services.ia.resumo_strategies import ResumoStrategyFactory
+from app.services.documento_permissions import DocumentoPolicy
 
 # Diretório base onde os arquivos reais serão armazenados
 UPLOAD_DIR = Path("uploads")
@@ -20,10 +26,16 @@ class DocumentoService:
     def __init__(
         self, 
         documento_repo: DocumentoRepository, 
-        matricula_repo: MatriculaRepository
+        matricula_repo: MatriculaRepository,
+        policy: DocumentoPolicy,
+        pdf_extractor: PDFExtractor,
+        ia_client: GroqClient
     ):
         self.documento_repo = documento_repo
         self.matricula_repo = matricula_repo
+        self.policy = policy
+        self.pdf_extractor = pdf_extractor
+        self.ia_client = ia_client
         
         # Garante que a pasta física de uploads exista no servidor
         UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -172,3 +184,33 @@ class DocumentoService:
 
         # Remove do banco
         self.documento_repo.deletar(documento)
+
+    # --- 5. RESUMO COM IA ---
+    def gerar_resumo(self, documento_id: int, usuario_logado: Usuario) -> ResumoIAResponse:
+        documento = self.documento_repo.buscar_por_id(documento_id)
+        if not documento:
+            raise RecursoNaoEncontradoError("Documento não encontrado.")
+
+        if not self.policy.pode_acessar_resumo(documento, usuario_logado):
+            raise PermissaoNegadaError("Você não tem permissão para acessar o resumo deste documento.")
+
+        texto_cru = self.pdf_extractor.extrair_texto(documento.caminho_arquivo)
+        if not texto_cru:
+            raise ValueError("O documento está vazio ou é ilegível.")
+
+        estrategia = ResumoStrategyFactory.get_strategy(documento.tipo)
+        prompt = estrategia.gerar_prompt(texto_cru)
+        
+        dados_ia = self.ia_client.processar_resumo_estruturado(prompt)
+
+        termos = dados_ia.termos_busca
+        links_reais = buscar_links_por_termos(termos) if termos else []
+
+        return ResumoIAResponse(
+            titulo_documento=dados_ia.titulo_documento,
+            resumo_geral=dados_ia.resumo_geral,
+            pontos_chave=dados_ia.pontos_chave,
+            proximos_passos_ou_recomendacoes=dados_ia.proximos_passos_ou_recomendacoes,
+            links_estudo=links_reais,
+            aviso_ia=dados_ia.aviso_ia
+        )

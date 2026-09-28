@@ -20,6 +20,11 @@ from app.services.matricula_service import MatriculaService
 from app.repositories.coordenador_repository import CoordenadorRepository
 from app.services.aluno_service import AlunoService
 from app.services.coordenador_service import CoordenadorService
+from app.core.utils.pdf_extractor import PDFExtractor
+from app.repositories.documento_repository import DocumentoRepository
+from app.services.documento_permissions import DocumentoPolicy
+from app.services.documento_service import DocumentoService
+from app.services.ia.ia_client import GroqClient
 
 
 # Fábrica do serviço de usuário. O FastAPI chama get_db() para pegar a conexão com o banco, instancia o UsuarioRepository e o AlunoRepository com ela, e injeta os dois no UsuarioService. Quem pedir service = Depends(get_usuario_service) na rota já recebe o serviço pronto.
@@ -75,6 +80,9 @@ def get_aluno_service(db: Session = Depends(get_db)) -> AlunoService:
 
 def get_documento_service(db: Session = Depends(get_db)) -> DocumentoService:
     return DocumentoService(
+        policy=DocumentoPolicy(),
+        pdf_extractor=PDFExtractor(),
+        ia_client=GroqClient(),
         documento_repo=DocumentoRepository(db),
         matricula_repo=MatriculaRepository(db)
     )

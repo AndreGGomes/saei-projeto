@@ -1,13 +1,13 @@
 # Guichê de Gestão de Documentos e Anexos. 
 # Permite o envio, a consulta dividida em listas (aluno/professor) e o download de laudos médicos, atividades adaptadas e planos de aula.
 
-from fastapi import APIRouter, Depends, UploadFile, File, Form, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from fastapi.responses import FileResponse
 
 from app.models import Usuario, TipoDocumento
 from app.api.dependencies import get_current_user, get_documento_service
 from app.services.documento_service import DocumentoService
-from app.schemas.documento_schemas import DocumentoResponse, MatriculaDocumentosResponse
+from app.schemas.documento_schemas import DocumentoResponse, MatriculaDocumentosResponse, ResumoIAResponse
 
 router = APIRouter(prefix="/documentos", tags=["Documentos e Anexos"])
 
@@ -93,3 +93,24 @@ def deletar_documento(
     current_user: Usuario = Depends(get_current_user)
 ):
     service.deletar_documento(documento_id, current_user)
+
+
+# Analisa o documento em anexo e gera um resumo estruturado utilizando Inteligência Artificial.
+@router.post(
+    "/{documento_id}/resumo-ia", 
+    response_model=ResumoIAResponse,
+    summary="Gerar Resumo IA do documento"
+)
+def gerar_resumo_ia(
+    documento_id: int,
+    service: DocumentoService = Depends(get_documento_service),
+    usuario_logado: Usuario = Depends(get_current_user)
+):
+    try:
+        # Erros de permissão ou documento não encontrado serão interceptados
+        # automaticamente pelo app.exception_handler global (403 e 404).
+        return service.gerar_resumo(documento_id, usuario_logado)
+        
+    except RuntimeError as e:
+        # Tratamos apenas falhas específicas do serviço externo (IA fora do ar, falha de processamento)
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))

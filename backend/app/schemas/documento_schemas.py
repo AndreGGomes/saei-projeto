@@ -1,6 +1,25 @@
-from datetime import datetime
+
+# app/schemas/documento_schemas.py
 from pydantic import BaseModel
+from typing import List, Optional
 from app.models import TipoDocumento
+from datetime import datetime
+
+class ResumoIAResponse(BaseModel):
+    titulo_documento: str
+    resumo_geral: str
+    pontos_chave: List[str]
+    proximos_passos_ou_recomendacoes: str
+    links_estudo: List[str] = []
+    aviso_ia: str
+
+class IAResumoInternal(BaseModel):
+    titulo_documento: str
+    resumo_geral: str
+    pontos_chave: List[str]
+    proximos_passos_ou_recomendacoes: str
+    termos_busca: List[str] = []
+    aviso_ia: str
 
 # Resumo público de quem enviou o documento
 class RemetenteResumo(BaseModel):
@@ -31,3 +50,4 @@ class MatriculaDocumentosResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
