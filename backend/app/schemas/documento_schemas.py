@@ -1,10 +1,11 @@
+# Contrato de dados do Pydantic para tudo o que envolve documentos/anexos e os resumos de Inteligência Artificial.
 
-# app/schemas/documento_schemas.py
 from pydantic import BaseModel
 from typing import List, Optional
 from app.models import TipoDocumento
 from datetime import datetime
 
+# Resposta enviada para o usuário no front
 class ResumoIAResponse(BaseModel):
     titulo_documento: str
     resumo_geral: str
@@ -13,6 +14,7 @@ class ResumoIAResponse(BaseModel):
     links_estudo: List[str] = []
     aviso_ia: str
 
+# É o modelo que valida o JSON bruto retornado pela LLM
 class IAResumoInternal(BaseModel):
     titulo_documento: str
     resumo_geral: str

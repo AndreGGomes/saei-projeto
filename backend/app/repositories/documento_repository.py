@@ -21,7 +21,7 @@ class DocumentoRepository:
             self.db.query(Documento)
             .options(
                 joinedload(Documento.remetente),
-                joinedload(Documento.matricula)
+                joinedload(Documento.matricula) #pra, quando pegar o documento pelo ID, trazer tambem a pessoa que enviou e a matricula
             )
             .filter(Documento.id == documento_id)
             .first()
