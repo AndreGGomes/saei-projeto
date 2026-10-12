@@ -1,4 +1,3 @@
-# app/services/documento_permissions.py
 from app.models import Documento, Usuario
 
 class DocumentoPolicy:

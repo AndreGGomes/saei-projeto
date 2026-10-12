@@ -1,4 +1,4 @@
-# app/services/documento_service.py
+
 import os
 import uuid
 import shutil
@@ -71,10 +71,10 @@ class DocumentoService:
         nome_seguro = f"{uuid.uuid4().hex}{extensao}"
         caminho_destino = UPLOAD_DIR / nome_seguro
 
-        # Salva o arquivo fisicamente no disco em blocos (chunks)
+        # Salva o arquivo fisicamente no disco em blocos
         try:
             with open(caminho_destino, "wb") as buffer:
-                shutil.copyfileobj(arquivo.file, buffer)
+                shutil.copyfileobj(arquivo.file, buffer) # Mesmo que o usuário faça upload de um PDF pesado ou de uma imagem de alta resolução, o FastAPI não aloca o arquivo inteiro na memória RAM de uma vez.
         finally:
             arquivo.file.close()
 
@@ -191,21 +191,27 @@ class DocumentoService:
         if not documento:
             raise RecursoNaoEncontradoError("Documento não encontrado.")
 
+        # Valida se quem está logado tem direito de ler o resumo
         if not self.policy.pode_acessar_resumo(documento, usuario_logado):
             raise PermissaoNegadaError("Você não tem permissão para acessar o resumo deste documento.")
 
+        # Abre o arquivo PDF no disco e extrai todo o conteúdo de texto legível
         texto_cru = self.pdf_extractor.extrair_texto(documento.caminho_arquivo)
         if not texto_cru:
             raise ValueError("O documento está vazio ou é ilegível.")
 
+        # Escolhe a estratégia correta e monta o prompt específico para o tipo de documento
         estrategia = ResumoStrategyFactory.get_strategy(documento.tipo)
         prompt = estrategia.gerar_prompt(texto_cru)
-        
+
+        # Envia o prompt para a API da Groq e recebe a resposta padronizada em formato JSON
         dados_ia = self.ia_client.processar_resumo_estruturado(prompt)
 
+        # Se a IA sugeriu termos de estudo, faz buscas reais no DuckDuckGo para pegar links verdadeiros
         termos = dados_ia.termos_busca
         links_reais = buscar_links_por_termos(termos) if termos else []
 
+        # Monta o contrato final devolvendo os pontos-chave, recomendações e links reais para o front-end
         return ResumoIAResponse(
             titulo_documento=dados_ia.titulo_documento,
             resumo_geral=dados_ia.resumo_geral,
