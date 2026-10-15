@@ -6,8 +6,9 @@ from fastapi.security import OAuth2PasswordRequestForm
 from typing import List
 from app.models import Usuario, UserRole
 from app.schemas import auth_schemas, usuario_schemas
-from app.api.dependencies import get_current_user, get_usuario_service
+from app.api.dependencies import get_current_user, get_usuario_service, get_auth_service
 from app.services.usuario_service import UsuarioService
+from app.services.auth_service import AuthService
 
 # Todas as rotas desse arquivo começam com /auth
 # tags=["Autenticação"] agrupa  essas rotas em uma caixinha na tela do Swagger (/docs)
@@ -47,7 +48,7 @@ def register_coordenador(
 @router.post("/login", response_model=auth_schemas.Token)
 def login(
     form_data: OAuth2PasswordRequestForm = Depends(), 
-    service: UsuarioService = Depends(get_usuario_service)
+    service: AuthService = Depends(get_auth_service)
 ):
     """Realiza a autenticação do usuário retornando o token JWT."""
     return service.autenticar_usuario(form_data.username, form_data.password)

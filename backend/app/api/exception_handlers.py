@@ -29,8 +29,9 @@ def registrar_handlers_de_excecao(app: FastAPI):
         )
 
     # Agrupa exceções que resultam em erro 401 (Unauthorized)
+    # Obs: PermissaoNegadaError é registrada apenas no grupo 403 abaixo — antes ela estava
+    # declarada nos dois grupos e o registro posterior silenciosamente sobrescrevia o primeiro.
     @app.exception_handler(CredenciaisInvalidasError)
-    @app.exception_handler(PermissaoNegadaError)
     async def unauthorized_handler(request: Request, exc: CredenciaisInvalidasError):
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,

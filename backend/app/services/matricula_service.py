@@ -11,6 +11,7 @@ from app.core.exceptions import (
     RecursoNaoEncontradoError, 
     VinculoJaExistenteError
 )
+from app.core.permissoes import exigir_coordenador
 
 class MatriculaService:
     def __init__(
@@ -24,11 +25,6 @@ class MatriculaService:
         self.professor_repo = professor_repo
         self.disciplina_repo = disciplina_repo
         self.aluno_repo = aluno_repo
-
-    # Apenas a coordenação pode mexer nas matrículas
-    def _verificar_permissao(self, usuario: Usuario):
-        if usuario.role != UserRole.COORDENADOR:
-            raise PermissaoNegadaError("Apenas coordenadores podem gerenciar matrículas.")
 
     # Formatação das matrículas
     def _formatar_matricula_response(self, matricula) -> dict:
@@ -51,7 +47,8 @@ class MatriculaService:
 
     # Validação de Integridade Referencial em Camada de Aplicação
     def criar_matricula(self, dados: MatriculaCreate, usuario_logado: Usuario) -> dict:
-        self._verificar_permissao(usuario_logado)
+        # Apenas a coordenação pode mexer nas matrículas
+        exigir_coordenador(usuario_logado, "Apenas coordenadores podem gerenciar matrículas.")
         
         # Busca pelas chaves naturais
         aluno = self.aluno_repo.buscar_por_matricula(dados.aluno_matricula)
@@ -80,7 +77,7 @@ class MatriculaService:
 
     # Confere se a matrícula existe, valida se o novo_professor_id é realmente um professor cadastrado e executa a troca.
     def mudar_professor(self, matricula_id: int, novo_professor_email: str, usuario_logado: Usuario) -> dict:
-        self._verificar_permissao(usuario_logado)
+        exigir_coordenador(usuario_logado, "Apenas coordenadores podem gerenciar matrículas.")
         
         matricula = self.matricula_repo.buscar_por_id(matricula_id)
         if not matricula:
@@ -95,7 +92,7 @@ class MatriculaService:
 
     #--- Métodos restritos à coordenação para cancelar vínculos ou emitir a lista completa de todas as matrículas cadastradas.
     def deletar_matricula(self, matricula_id: int, usuario_logado: Usuario):
-        self._verificar_permissao(usuario_logado)
+        exigir_coordenador(usuario_logado, "Apenas coordenadores podem gerenciar matrículas.")
         
         matricula = self.matricula_repo.buscar_por_id(matricula_id)
         if not matricula:
@@ -104,7 +101,7 @@ class MatriculaService:
         self.matricula_repo.deletar(matricula)
 
     def listar_todas(self, usuario_logado: Usuario) -> list[dict]:
-        self._verificar_permissao(usuario_logado)
+        exigir_coordenador(usuario_logado, "Apenas coordenadores podem gerenciar matrículas.")
         matriculas = self.matricula_repo.listar_todas()
         return [self._formatar_matricula_response(m) for m in matriculas]
     #---
@@ -116,23 +113,9 @@ class MatriculaService:
         
         if usuario_logado.role == UserRole.PROFESSOR:
             matriculas = self.matricula_repo.listar_por_professor(usuario_logado.id)
+            # Reutiliza o mesmo formatador da listagem da coordenação (evita a regra duplicada)
             matriculas_formatadas = [
-                {
-                    "id": m.id,
-                    "aluno": {
-                        "nome": m.aluno.usuario.nome,
-                        "matricula": m.aluno.matricula
-                    },
-                    "professor": {
-                        "nome": m.professor.usuario.nome,
-                        "email": m.professor.usuario.email
-                    },
-                    "disciplina": {
-                        "id": m.disciplina.id,
-                        "nome": m.disciplina.nome,
-                        "codigo": m.disciplina.codigo
-                    }
-                }
+                self._formatar_matricula_response(m)
                 for m in matriculas
             ]
             # Retorna o schema específico do Professor

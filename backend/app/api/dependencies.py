@@ -20,10 +20,10 @@ from app.services.matricula_service import MatriculaService
 from app.repositories.coordenador_repository import CoordenadorRepository
 from app.services.aluno_service import AlunoService
 from app.services.coordenador_service import CoordenadorService
+from app.services.auth_service import AuthService
+from app.core.utils.arquivo_storage import ArquivoStorage
 from app.core.utils.pdf_extractor import PDFExtractor
-from app.repositories.documento_repository import DocumentoRepository
 from app.services.documento_permissions import DocumentoPolicy
-from app.services.documento_service import DocumentoService
 from app.services.ia.ia_client import GroqClient
 
 
@@ -33,6 +33,13 @@ def get_usuario_service(db: Session = Depends(get_db)) -> UsuarioService:
         usuario_repo=UsuarioRepository(db),
         aluno_repo=AlunoRepository(db),
         professor_repo=ProfessorRepository(db)
+    )
+
+# Fábrica do serviço de autenticação (login e emissão de JWT)
+def get_auth_service(db: Session = Depends(get_db)) -> AuthService:
+    return AuthService(
+        usuario_repo=UsuarioRepository(db),
+        aluno_repo=AlunoRepository(db)
     )
 
 # Pega quem é o usuário atual
@@ -83,6 +90,7 @@ def get_documento_service(db: Session = Depends(get_db)) -> DocumentoService:
         policy=DocumentoPolicy(),
         pdf_extractor=PDFExtractor(),
         ia_client=GroqClient(),
+        storage=ArquivoStorage(),
         documento_repo=DocumentoRepository(db),
         matricula_repo=MatriculaRepository(db)
     )
