@@ -160,18 +160,14 @@ class DocumentoService:
         if not texto_cru:
             raise ValueError("O documento está vazio ou é ilegível.")
 
-        # Escolhe a estratégia correta e monta o prompt específico para o tipo de documento
-        estrategia = ResumoStrategyFactory.get_strategy(documento.tipo)
-        prompt = estrategia.gerar_prompt(texto_cru)
+        # O Service agora delega completamente a inteligência de prompt e IA ao client
+        dados_ia = self.ia_client.processar_resumo_estruturado(texto_cru, documento.tipo)
 
-        # Envia o prompt para a API da Groq e recebe a resposta padronizada em formato JSON
-        dados_ia = self.ia_client.processar_resumo_estruturado(prompt)
-
-        # Se a IA sugeriu termos de estudo, faz buscas reais no DuckDuckGo para pegar links verdadeiros
+        # Se a IA sugeriu termos de estudo, faz buscas reais
         termos = dados_ia.termos_busca
         links_reais = buscar_links_por_termos(termos) if termos else []
 
-        # Monta o contrato final devolvendo os pontos-chave, recomendações e links reais para o front-end
+        # Monta a resposta para o front-end
         return ResumoIAResponse(
             titulo_documento=dados_ia.titulo_documento,
             resumo_geral=dados_ia.resumo_geral,
