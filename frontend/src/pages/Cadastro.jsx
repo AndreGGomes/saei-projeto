@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import useTheme from '../hooks/useTheme';
+import ThemeToggle from '../components/ThemeToggle';
 
 export default function Cadastro() {
   const navigate = useNavigate();
@@ -17,29 +19,8 @@ export default function Cadastro() {
   const [mostrarConfirmarSenha, setMostrarConfirmarSenha] = useState(false);
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState('');
-  const [isDarkMode, setIsDarkMode] = useState(false);
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
-      setIsDarkMode(true);
-      document.documentElement.classList.add('dark');
-    } else {
-      setIsDarkMode(false);
-      document.documentElement.classList.remove('dark');
-    }
-  }, []);
-
-  const setTheme = (dark) => {
-    setIsDarkMode(dark);
-    if (dark) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  };
+  // Tema (dark/light) compartilhado via hook
+  const { isDarkMode, setTheme } = useTheme();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -102,30 +83,8 @@ export default function Cadastro() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 p-4 transition-colors duration-300">
-      <div className="absolute top-6 right-6 flex items-center bg-white dark:bg-slate-800 rounded-full p-1 shadow-md border border-slate-200 dark:border-slate-700 space-x-1">
-        <button
-          onClick={() => setTheme(false)}
-          className={`flex items-center justify-center w-8 h-8 rounded-full transition ${
-            !isDarkMode ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
-          }`}
-          title="Modo Claro"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
-          </svg>
-        </button>
-
-        <button
-          onClick={() => setTheme(true)}
-          className={`flex items-center justify-center w-8 h-8 rounded-full transition ${
-            isDarkMode ? 'bg-slate-700 text-yellow-400 shadow' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
-          }`}
-          title="Modo Escuro"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
-          </svg>
-        </button>
+      <div className="absolute top-6 right-6">
+        <ThemeToggle isDarkMode={isDarkMode} setTheme={setTheme} variant="cadastro" />
       </div>
 
       <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 p-8 shadow-xl border border-slate-100 dark:border-slate-800 transition-colors duration-300">
