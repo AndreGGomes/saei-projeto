@@ -1,9 +1,7 @@
-from app.models import Usuario, UserRole
-from app.core.exceptions import PermissaoNegadaError, RecursoNaoEncontradoError, VinculoJaExistenteError
+from app.models import Usuario
+from app.core.exceptions import RecursoNaoEncontradoError, VinculoJaExistenteError
+from app.core.permissoes import exigir_coordenador
 from app.repositories.aluno_repository import AlunoRepository
-from app.repositories.professor_repository import ProfessorRepository
-from app.repositories.disciplina_repository import DisciplinaRepository
-from app.repositories.matricula_repository import MatriculaRepository
 from app.schemas.aluno_schemas import TutorarAlunoIn
 
 class AlunoService:
@@ -14,14 +12,10 @@ class AlunoService:
         ):
             self.aluno_repo = aluno_repo
 
-    # Só coordenador pode fazer essas coisas
-    def _verificar_permissao_coordenador(self, usuario: Usuario):
-        if usuario.role != UserRole.COORDENADOR:
-            raise PermissaoNegadaError("Apenas coordenadores podem realizar esta ação.")
-
     # Regra para o Coordenador assumir a tutoria de um aluno
     def vincular_tutor(self, dados: TutorarAlunoIn, usuario_logado: Usuario):
-        self._verificar_permissao_coordenador(usuario_logado)
+        # Só coordenador pode fazer essa ação
+        exigir_coordenador(usuario_logado, "Apenas coordenadores podem realizar esta ação.")
 
         # Confere se o aluno existe, pela matrícula
         aluno = self.aluno_repo.buscar_por_matricula(dados.aluno_matricula)

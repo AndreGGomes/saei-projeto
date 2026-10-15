@@ -44,7 +44,7 @@ def buscar_disciplina_por_codigo(
     service: DisciplinaService = Depends(get_disciplina_service),
     current_user: Usuario = Depends(get_current_user)
 ):
-    return service.buscar_por_codigo(codigo, current_user)
+    return service.buscar_por_codigo(codigo)
 
 # Lista todas as disciplinas cadastradas
 @router.get("/", response_model=List[DisciplinaResponse], status_code=status.HTTP_200_OK)
