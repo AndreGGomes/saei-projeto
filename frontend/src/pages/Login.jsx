@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import useTheme from '../hooks/useTheme';
+import ThemeToggle from '../components/ThemeToggle';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -9,33 +11,10 @@ export default function Login() {
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState('');
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  // Tema (dark/light) compartilhado via hook
+  const { isDarkMode, setTheme } = useTheme();
 
-  // 1. Carrega a preferência de tema salva no navegador
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
-      setIsDarkMode(true);
-      document.documentElement.classList.add('dark');
-    } else {
-      setIsDarkMode(false);
-      document.documentElement.classList.remove('dark');
-    }
-  }, []);
-
-  // 2. Função para alternar entre Claro e Escuro
-  const setTheme = (dark) => {
-    setIsDarkMode(dark);
-    if (dark) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  };
-
-  // 3. Submissão do formulário de autenticação
+  // Submissão do formulário de autenticação
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErro('');
@@ -82,36 +61,8 @@ export default function Login() {
   return (
     <div className="relative flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 p-4 transition-colors duration-300">
       {/* Seletor de Tema (Sol e Lua) */}
-      <div className="absolute top-6 right-6 flex items-center bg-slate-200 dark:bg-slate-800 rounded-full p-1 shadow-md border border-slate-300 dark:border-slate-700 space-x-1 z-50">
-        <button
-          type="button"
-          onClick={() => setTheme(false)}
-          className={`flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 ${
-            !isDarkMode
-              ? 'bg-white text-amber-500 shadow-md scale-105'
-              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-          }`}
-          title="Modo Claro"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
-          </svg>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setTheme(true)}
-          className={`flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 ${
-            isDarkMode
-              ? 'bg-slate-900 text-yellow-400 shadow-md scale-105'
-              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-          }`}
-          title="Modo Escuro"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
-          </svg>
-        </button>
+      <div className="absolute top-6 right-6">
+        <ThemeToggle isDarkMode={isDarkMode} setTheme={setTheme} variant="login" />
       </div>
 
       {/* Cartão de Login */}
