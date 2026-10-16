@@ -42,7 +42,9 @@ class MatriculaService:
                 "id": matricula.disciplina.id,
                 "nome": matricula.disciplina.nome,
                 "codigo": matricula.disciplina.codigo
-            }
+            },
+            # Preferências pessoais do aluno; nascem vazias quando a matrícula é criada
+            "preferencias_do_aluno": matricula.preferencias_do_aluno or ""
         }
 
     # Validação de Integridade Referencial em Camada de Aplicação
@@ -90,6 +92,25 @@ class MatriculaService:
         matricula_atualizada = self.matricula_repo.atualizar_professor(matricula, novo_professor.usuario_id)
         return self._formatar_matricula_response(matricula_atualizada)
 
+    #--- Restrito ao próprio aluno: grava as preferências dele de aprendizado e inclusão numa matrícula específica.
+    def atualizar_preferencias_do_aluno(
+        self, matricula_id: int, preferencias: str, usuario_logado: Usuario
+    ) -> dict:
+        # Só o papel ALUNO pode alterar preferências, e apenas o dono da matrícula
+        if usuario_logado.role != UserRole.ALUNO:
+            raise PermissaoNegadaError("Apenas o próprio aluno pode alterar suas preferências de aprendizado.")
+
+        matricula = self.matricula_repo.buscar_por_id(matricula_id)
+        if not matricula:
+            raise RecursoNaoEncontradoError("Matrícula não encontrada.")
+
+        if matricula.aluno_id != usuario_logado.id:
+            raise PermissaoNegadaError("Apenas o aluno dono desta matrícula pode alterar suas preferências de aprendizado.")
+
+        matricula_atualizada = self.matricula_repo.atualizar_preferencias(matricula, preferencias)
+        return self._formatar_matricula_response(matricula_atualizada)
+    #---
+
     #--- Métodos restritos à coordenação para cancelar vínculos ou emitir a lista completa de todas as matrículas cadastradas.
     def deletar_matricula(self, matricula_id: int, usuario_logado: Usuario):
         exigir_coordenador(usuario_logado, "Apenas coordenadores podem gerenciar matrículas.")
@@ -124,3 +145,15 @@ class MatriculaService:
             )
         else:
             raise PermissaoNegadaError("Apenas professores podem visualizar a lista com suas próprias matrículas.")
+
+    # Listagem de matrículas do Aluno (painel do aluno)
+    def listar_sob_responsabilidade_por_usuario_logado_aluno(
+        self, usuario_logado: Usuario
+    ) -> list[dict]:
+
+        if usuario_logado.role == UserRole.ALUNO:
+            matriculas = self.matricula_repo.listar_por_aluno(usuario_logado.id)
+            # Reutiliza o mesmo formatador das demais listagens (evita regra duplicada)
+            return [self._formatar_matricula_response(m) for m in matriculas]
+        else:
+            raise PermissaoNegadaError("Apenas alunos podem visualizar a lista com suas próprias matrículas.")

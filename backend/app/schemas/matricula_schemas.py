@@ -31,12 +31,17 @@ class MatriculaCreate(BaseModel):
 class MatriculaUpdateProfessor(BaseModel):
     novo_professor_email: EmailStr
 
+# Formulário de atualização das preferências pessoais do aluno sobre aprendizado e inclusão
+class PreferenciasDoAlunoUpdate(BaseModel):
+    preferencias_do_aluno: str
+
 # Contrato de retorno de uma matrícula
 class MatriculaResponse(BaseModel):
     id: int
     aluno: AlunoResumoResponse
     professor: ProfessorResumoResponse
     disciplina: DisciplinaResponse
+    preferencias_do_aluno: str = ""
 
     class Config:
         from_attributes = True

@@ -113,6 +113,9 @@ class Matricula(Base):
     professor_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
     disciplina_id = Column(Integer, ForeignKey("disciplinas.id"), nullable=False)
 
+    # Preferências pessoais do aluno sobre aprendizado e inclusão. Nascem vazias e só o próprio aluno pode alterá-las.
+    preferencias_do_aluno = Column(String, nullable=False, server_default="", default="")
+
     aluno = relationship(
         "Aluno", 
         foreign_keys=[aluno_id], 
