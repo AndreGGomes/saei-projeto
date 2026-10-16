@@ -226,9 +226,19 @@ export default function DashboardCoordenador() {
   };
 
   // 7. Abertura dos modais a partir das tabelas
-  const abrirEdicaoDisciplina = (disc) => {
+  // A edição busca os dados atuais da disciplina no servidor (GET /disciplinas/{codigo})
+  // para não editar um nome já desatualizado na lista carregada no início da sessão.
+  const abrirEdicaoDisciplina = async (disc) => {
     setDisciplinaEditando(disc);
     setNovoNomeDisciplina(disc.nome);
+    try {
+      const res = await api.get(`/disciplinas/${disc.codigo}`);
+      setDisciplinaEditando(res.data);
+      setNovoNomeDisciplina(res.data.nome);
+    } catch (err) {
+      // Sem internet/servidor: o modal segue com os dados da lista (fallback)
+      console.error('Erro ao buscar disciplina para edição:', err);
+    }
   };
 
   const abrirTrocaProfessor = (m) => {
