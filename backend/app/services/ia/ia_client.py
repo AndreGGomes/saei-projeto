@@ -5,9 +5,10 @@
 import os
 from groq import Groq
 from app.schemas.documento_schemas import IAResumoInternal
-from app.schemas.ia_schemas import IATutorAlunoInternal
+from app.schemas.ia_schemas import IATutorAlunoInternal, IAAdaptacaoInternal
 from app.models import TipoDocumento
 from app.services.ia.resumo_strategies import ResumoStrategyFactory
+from app.services.ia.adaptacao_strategies import AdaptacaoStrategyFactory
 
 class GroqClient:
     def __init__(self):
@@ -67,6 +68,30 @@ class GroqClient:
         
         # 3. Converte a string JSON recebida diretamente para o schema Pydantic garantindo tipagem e validação dos campos
         return IAResumoInternal.model_validate_json(conteudo_json_str)
+
+    def adaptar_material(
+        self,
+        texto_material: str,
+        tipo_documento: TipoDocumento,
+        resumo_laudo: str,
+        diretrizes_inclusao: str
+    ) -> IAAdaptacaoInternal:
+        """Adapta um plano de aula ou atividade com base no laudo e nas diretrizes de inclusão.
+        O processamento é 100% textual (sem busca externa) e o retorno é validado no schema interno."""
+        # 1. Seleciona a estratégia conforme o tipo do material (foco em sala ou em estrutura de exercício)
+        estrategia = AdaptacaoStrategyFactory.get_strategy(tipo_documento)
+        prompt = estrategia.gerar_prompt(
+            texto_material=texto_material,
+            resumo_laudo=resumo_laudo,
+            diretrizes_inclusao=diretrizes_inclusao
+        )
+
+        # 2. Envia para a Groq exigindo um objeto JSON válido
+        conteudo_json_str = self._enviar_prompt(prompt, response_format="json_object")
+
+        # 3. Converte a string JSON recebida diretamente para o schema Pydantic garantindo
+        # que as listas contenham apenas strings estritas (StrictStr)
+        return IAAdaptacaoInternal.model_validate_json(conteudo_json_str)
 
     def gerar_tutoria_aluno(
         self, 

@@ -20,7 +20,7 @@ from app.services.ia.ia_client import GroqClient
 from app.services.ia.resumo_strategies import ResumoStrategyFactory
 from app.services.documento_permissions import DocumentoPolicy
 from app.core.utils.search_helper import buscar_links_por_termos, buscar_links_detalhados_por_termos
-from app.schemas.ia_schemas import TutorAlunoResponse
+from app.schemas.ia_schemas import TutorAlunoResponse, IAAdaptacaoInternal
 
 class DocumentoService:
     def __init__(
@@ -237,4 +237,47 @@ class DocumentoService:
             explicacao_pedagogica=dados_ia.explicacao_pedagogica,
             passo_a_passo_resolucao=dados_ia.passo_a_passo_resolucao,
             links_recomendados=links_reais
+        )
+
+    # --- 7. ADAPTAÇÃO INTELIGENTE DE MATERIAIS (VISÃO DO PROFESSOR E COORDENADOR) ---
+    def gerar_adaptacao_documento(self, documento_id: int, usuario_logado: Usuario) -> IAAdaptacaoInternal:
+        # A adaptação de materiais é um guia metodológico para quem ensina: professores e coordenadores
+        if usuario_logado.role not in (UserRole.PROFESSOR, UserRole.COORDENADOR):
+            raise PermissaoNegadaError("A adaptação de materiais é exclusiva para professores e coordenadores.")
+
+        # Confere se o documento (plano de aula ou atividade) existe no banco
+        documento = self.documento_repo.buscar_por_id(documento_id)
+        if not documento:
+            raise RecursoNaoEncontradoError("Documento não encontrado.")
+
+        # Valida se quem está pedindo faz parte daquela matrícula (aluno, professor ou coordenador)
+        if not self.policy.pode_acessar_resumo(documento, usuario_logado):
+            raise PermissaoNegadaError("Você não tem permissão para acessar este documento.")
+
+        # Extrai o texto bruto do PDF do material pedagógico
+        texto_material = self.pdf_extractor.extrair_texto(documento.caminho_arquivo)
+        if not texto_material:
+            raise ValueError("O arquivo do material está vazio ou é ilegível.")
+
+        # Procura laudos médicos anexados na mesma matrícula para dar contexto clínico à adaptação
+        todos_docs = self.documento_repo.listar_por_matricula(documento.matricula_id)
+        laudos_textos = []
+        for doc in todos_docs:
+            if doc.tipo == TipoDocumento.LAUDO_MEDICO:
+                try:
+                    txt = self.pdf_extractor.extrair_texto(doc.caminho_arquivo)
+                    if txt:
+                        laudos_textos.append(f"[{doc.titulo}]: {txt[:1000]}")
+                except Exception:
+                    # Se algum PDF de laudo falhar na leitura, ignora e segue sem travar a adaptação
+                    pass
+
+        resumo_laudo = "\n".join(laudos_textos) if laudos_textos else "Nenhum laudo médico anexado nesta matrícula."
+
+        # Envia tudo para a Groq montar o guia de adaptação (processamento 100% textual, sem busca externa)
+        return self.ia_client.adaptar_material(
+            texto_material=texto_material,
+            tipo_documento=documento.tipo,
+            resumo_laudo=resumo_laudo,
+            diretrizes_inclusao="Nenhuma diretriz de inclusão específica informada."
         )

@@ -139,6 +139,7 @@ export default function TabDocumentos({
             vazioTexto="Nenhum anexo enviado pelo aluno."
             documentos={documentosMatricula.enviados_pelo_aluno}
             onDownload={onDownload}
+            perfil="PROFESSOR"
           />
 
           {/* 2. DOCUMENTOS ENVIADOS PELO PROFESSOR */}
@@ -151,6 +152,7 @@ export default function TabDocumentos({
             documentos={documentosMatricula.enviados_pelo_professor}
             onDownload={onDownload}
             onDelete={onDeletar}
+            perfil="PROFESSOR"
           />
         </div>
       )}

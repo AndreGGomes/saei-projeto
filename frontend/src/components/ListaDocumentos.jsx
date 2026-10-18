@@ -72,6 +72,7 @@ export default function ListaDocumentos({
   documentos = [],
   onDownload,
   onDelete,
+  perfil = 'ALUNO',
 }) {
   const v = VARIANTES[variante] || VARIANTES.painel;
   const c = CORES[cor] || CORES.blue;
@@ -103,7 +104,7 @@ export default function ListaDocumentos({
               </div>
               <div className={v.acoes}>
                 {/* Ações de IA (resumo etc.) — presentes em qualquer variante */}
-                <BotaoAcoesIA documento={doc} className={v.ia} />
+                <BotaoAcoesIA documento={doc} className={v.ia} perfil={perfil} />
 
                 {onDelete && (
                   <>

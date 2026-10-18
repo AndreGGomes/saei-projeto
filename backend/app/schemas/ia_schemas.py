@@ -1,5 +1,6 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, StrictStr
 from typing import List, Optional
+from app.models import TipoDocumento
 
 # Payload de Entrada
 class TutorAlunoRequest(BaseModel):
@@ -18,3 +19,21 @@ class TutorAlunoResponse(BaseModel):
     explicacao_pedagogica: str
     passo_a_passo_resolucao: List[str]
     links_recomendados: List[dict]
+
+
+# Payload de Entrada do endpoint de Adaptação Inteligente de Materiais
+# (Visão do Professor e do Coordenador)
+class AdaptarMaterialRequest(BaseModel):
+    texto_material: str
+    tipo_documento: TipoDocumento
+    resumo_laudo: Optional[str] = "Nenhum laudo informado."
+    diretrizes_inclusao: Optional[str] = "Nenhuma diretriz de inclusão específica informada."
+
+
+# O que a IA da Groq devolve para o FastAPI (Uso Interno) na adaptação de materiais.
+# StrictStr garante que a IA não consiga entregar números ou bools convertidos para string
+# (ex.: [1, 2] ou [true]) sem que o Pydantic derrube a resposta com ValidationError.
+class IAAdaptacaoInternal(BaseModel):
+    mudancas_sugeridas: List[StrictStr]
+    justificativa_inclusiva: str
+    dicas_de_abordagem: List[StrictStr]
