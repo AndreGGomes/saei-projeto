@@ -46,30 +46,58 @@ def buscar_links_por_termos(termos: list[str]) -> list[str]:
     # Devolve a lista de links reais para ser injetada no schema de resposta da IA
     return links_reais
 
-def buscar_links_detalhados_por_termos(termos: list[str]) -> list[dict]:
+def buscar_links_detalhados_por_termos(
+    termos: list[str], 
+    resumo_laudo: str = "", 
+    preferencias_aluno: str = ""
+) -> list[dict]:
     """
-    Recebe termos de busca gerados pela IA e retorna uma lista de dicionários
-    com 'titulo' e 'url' reais encontrados no DuckDuckGo.
+    Recebe termos de busca gerados pela IA e analisa tanto o laudo quanto as preferências
+    do aluno para refinar os termos e evitar conteúdos maçantes/inadequados.
     """
     links_recomendados = []
     if not termos:
         return links_recomendados
 
-    logger.info(f"Iniciando busca detalhada no DuckDuckGo para: {termos}")
+    contexto_inclusao = f"{resumo_laudo} {preferencias_aluno}".lower()
+
+    # Detecta se há necessidade de formatos curtos, visuais ou dinâmicos
+    precisa_texto_curto = any(
+        chave in contexto_inclusao 
+        for chave in ["tdah", "dislexia", "concentra", "curto", "resumo", "tópico", "breve", "direto", "atenção"]
+    )
+    prefere_video_visual = any(
+        chave in contexto_inclusao 
+        for chave in ["vídeo", "video", "visual", "assistir", "animação", "imagem", "mapa mental"]
+    )
+
+    sufixo_ajuste = ""
+    if precisa_texto_curto and not prefere_video_visual:
+        # Adiciona modificador de resumo e exclui enciclopédias longas
+        sufixo_ajuste = " resumo em tópicos -wikipedia"
+    elif prefere_video_visual:
+        sufixo_ajuste = " video explicativo curto"
+
+    logger.info(f"Buscando links no DuckDuckGo com refinamento inclusivo ('{sufixo_ajuste.strip()}')...")
 
     try:
         with DDGS() as ddgs:
             for termo in termos:
                 if not termo or not isinstance(termo, str):
                     continue
+
+                termo_final = f"{termo.strip()}{sufixo_ajuste}"
+                resultados = list(ddgs.text(termo_final, max_results=2))
                 
-                resultados = list(ddgs.text(termo.strip(), max_results=1))
-                if resultados and "href" in resultados[0]:
-                    item = resultados[0]
-                    links_recomendados.append({
-                        "titulo": item.get("title", termo.strip()),
-                        "url": item.get("href")
-                    })
+                # Pega o primeiro resultado que não seja wikipedia
+                for item in resultados:
+                    url = item.get("href", "")
+                    if "wikipedia.org" not in url:
+                        links_recomendados.append({
+                            "titulo": item.get("title", termo.strip()),
+                            "url": url
+                        })
+                        break
     except Exception as e:
         logger.error(f"Erro ao buscar links detalhados no DuckDuckGo: {e}", exc_info=True)
 

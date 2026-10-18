@@ -1,10 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from app.models import Usuario, TipoDocumento
-from app.schemas.ia_schemas import TutorAlunoRequest, TutorAlunoResponse
+from app.models import Usuario, UserRole
+from app.core.exceptions import PermissaoNegadaError
 from app.api.dependencies import get_current_user, get_documento_service
 from app.services.documento_service import DocumentoService
-from app.services.ia.ia_client import GroqClient
-from app.core.utils.search_helper import buscar_links_detalhados_por_termos
+from app.schemas.ia_schemas import TutorAlunoRequest, TutorAlunoResponse
 
 router = APIRouter(prefix="/ia", tags=["Inteligência Artificial - Tutor"])
 
@@ -13,12 +12,15 @@ router = APIRouter(prefix="/ia", tags=["Inteligência Artificial - Tutor"])
     "/tutor-aluno",
     response_model=TutorAlunoResponse,
     status_code=status.HTTP_200_OK,
-    summary="Tutor de Estudos Personalizado (via Payload JSON)"
+    summary="Tutor de Estudos Personalizado (Exclusivo para Alunos)"
 )
 def tutor_estudos_personalizado(
     dados: TutorAlunoRequest,
     current_user: Usuario = Depends(get_current_user)
 ):
+    # apenas ALUNO
+    if current_user.role != UserRole.ALUNO:
+        raise PermissaoNegadaError("O Tutor de Estudos Personalizado é um recurso exclusivo para estudantes.")
     try:
         ia_client = GroqClient()
         # chama a Groq
@@ -29,7 +31,11 @@ def tutor_estudos_personalizado(
         )
 
         # extrai os termos_busca_duckduckgo e busca links reais no DuckDuckGo
-        links_reais = buscar_links_detalhados_por_termos(resposta_ia.termos_busca_duckduckgo)
+        links_reais = buscar_links_detalhados_por_termos(
+            termos=resposta_ia.termos_busca_duckduckgo,
+            resumo_laudo=dados.resumo_laudo or "",
+            preferencias_aluno=dados.preferencias_aluno or ""
+        )
 
         # Monta o TutorAlunoResponse
         return TutorAlunoResponse(

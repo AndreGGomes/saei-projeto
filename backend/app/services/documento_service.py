@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi import UploadFile
 
 from app.core.utils.search_helper import buscar_links_por_termos
-from app.models import Usuario, Documento, TipoDocumento
+from app.models import Usuario, Documento, TipoDocumento, UserRole
 from app.repositories.documento_repository import DocumentoRepository
 from app.repositories.matricula_repository import MatriculaRepository
 from app.schemas.documento_schemas import MatriculaDocumentosResponse, DocumentoResponse, ResumoIAResponse
@@ -181,6 +181,10 @@ class DocumentoService:
 
     # --- 6. TUTOR DE ESTUDOS PERSONALIZADO (VISÃO DO ALUNO) ---
     def gerar_tutoria_documento(self, documento_id: int, usuario_logado: Usuario) -> TutorAlunoResponse:
+        # apenas estudantes
+        if usuario_logado.role != UserRole.ALUNO:
+            raise PermissaoNegadaError("O Tutor de Estudos Personalizado é exclusivo para alunos.")
+        
         # Confere se o documento da atividade existe no banco
         documento = self.documento_repo.buscar_por_id(documento_id)
         if not documento:
@@ -222,7 +226,11 @@ class DocumentoService:
         )
 
         # Faz a busca no DuckDuckGo com os termos sugeridos pela IA para pegar links reais (título + url)
-        links_reais = buscar_links_detalhados_por_termos(dados_ia.termos_busca_duckduckgo)
+        links_reais = buscar_links_detalhados_por_termos(
+            termos=dados_ia.termos_busca_duckduckgo,
+            resumo_laudo=resumo_laudo,
+            preferencias_aluno=preferencias
+        )
 
         # Devolve o contrato completo para o front-end montar o modal do Tutor
         return TutorAlunoResponse(

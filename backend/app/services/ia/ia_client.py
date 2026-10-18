@@ -76,31 +76,58 @@ class GroqClient:
     ) -> IATutorAlunoInternal:
         """Gera a explicação personalizada da atividade para o aluno e valida no schema interno."""
         prompt = f"""
-        Você é um professor particular especialista em educação inclusiva.
-        Explique o assunto da atividade abaixo para um aluno com o seguinte contexto:
-        - Laudo / Condição: {resumo_laudo}
-        - Preferências de Aprendizagem: {preferencias_aluno}
+Você é um pedagogo especialista em mediação de aprendizagem e educação inclusiva.
+Sua missão é atuar como um tutor particular para um estudante que precisa de suporte para compreender e resolver a atividade apresentada.
 
-        Adapte sua linguagem, didática e formato de explicação para respeitar o laudo e atender às preferências do estudante.
-        Não invente links ou URLs. No campo 'termos_busca_duckduckgo', forneça de 2 a 3 termos de pesquisa precisos para encontrar vídeos ou artigos reais sobre o tema.
+---
+PERFIL E CONTEXTO DO ESTUDANTE:
+- Dados do Laudo / Avaliação Multidisciplinar:
+{resumo_laudo}
 
-        ATENÇÃO: Responda EXCLUSIVAMENTE em formato JSON válido, seguindo exatamente esta estrutura:
-        {{
-            "explicacao_pedagogica": "Explicação clara, acolhedora e adaptada sobre o tema da atividade...",
-            "passo_a_passo_resolucao": [
-                "Passo 1: ...",
-                "Passo 2: ...",
-                "Passo 3: ..."
-            ],
-            "termos_busca_duckduckgo": [
-                "Termo de busca 1",
-                "Termo de busca 2"
-            ]
-        }}
+- Autopercepção e Preferências do Estudante:
+{preferencias_aluno}
 
-        ATIVIDADE:
-        {texto_atividade}
-        """
+---
+ATIVIDADE ESCOLAR A SER TRABALHADA:
+{texto_atividade}
+
+---
+DIRETRIZES DE MEDIAÇÃO PEDAGÓGICA:
+
+1. ANÁLISE DE NUANCES (LAUDO + PREFERÊNCIAS):
+Analise com sensibilidade a interseção entre o diagnóstico e a voz do próprio estudante:
+- Identifique quais são as reais barreiras cognitivas, atencionais ou sensoriais descritas no laudo (por exemplo: sobrecarga de memória de trabalho, fadiga visual, desatenção a estímulos monótonos ou dificuldade de abstração).
+- Respeite como o estudante expressa sua forma favorita de estudar (ex: se pede brevidade, metáforas, ritmo fragmentado ou apoio visual).
+- Não rotule o estudante pelo diagnóstico; traduza as necessidades em estratégias de facilitação que preservem a autonomia dele.
+
+2. EXPLICAÇÃO DO CONTEÚDO ('explicacao_pedagogica'):
+- Conecte o tema da atividade à realidade do aluno por meio de analogias intuitivas e concretas.
+- Calibre o ritmo e a densidade textual de acordo com as necessidades observadas: evite parágrafos maciços se o aluno demonstrar dispersão rápida, optando por ideias centrais destacadas e quebras visuais acolhedoras.
+- O objetivo é que o estudante sinta: "isso faz sentido para mim e eu sou capaz de aprender".
+
+3. ESTRATÉGIA DE RESOLUÇÃO ('passo_a_passo_resolucao'):
+- Não entregue a resposta pronta da atividade.
+- Decomponha o raciocínio em etapas claras e acionáveis, orientando o estudante sobre o que observar primeiro e como estruturar sua própria conclusão.
+
+4. CURADORIA DE MATERIAIS REAIS ('termos_busca_duckduckgo'):
+- Gere de 2 a 3 termos de busca altamente qualificados para a internet.
+- A curadoria deve refletir o formato que melhor acolhe o estudante (por exemplo, se o perfil demandar síntese visual ou objetividade, direcione para esquemas, resumos visuais ou vídeos explicativos breves, em vez de textos enciclopédicos extensos).
+
+---
+CONTRATO DE RESPOSTA:
+Responda EXCLUSIVAMENTE em formato JSON válido, respeitando rigorosamente a seguinte estrutura:
+{{
+    "explicacao_pedagogica": "Sua mediação pedagógica personalizada...",
+    "passo_a_passo_resolucao": [
+        "Etapa 1: ...",
+        "Etapa 2: ..."
+    ],
+    "termos_busca_duckduckgo": [
+        "Termo de busca 1",
+        "Termo de busca 2"
+    ]
+}}
+"""
 
         try:
             self.client = Groq(api_key=self._api_key)
