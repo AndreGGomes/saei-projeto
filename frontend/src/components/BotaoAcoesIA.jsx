@@ -2,12 +2,19 @@ import { useRef, useState } from 'react';
 import Popover from './Popover';
 import ModalResumoIA from './ModalResumoIA';
 import ModalTutorIA from './ModalTutorIA';
+import ModalAdaptarMaterial from './ModalAdaptarMaterial';
 
-export default function BotaoAcoesIA({ documento, className = '' }) {
+export default function BotaoAcoesIA({ documento, className = '', perfil = 'ALUNO' }) {
   const [rect, setRect] = useState(null);
   const [resumoAberto, setResumoAberto] = useState(false);
   const [tutorAberto, setTutorAberto] = useState(false);
+  const [adaptarAberto, setAdaptarAberto] = useState(false);
   const ancoraRef = useRef(null);
+
+  // A adaptação de materiais é um recurso de mediação (guia para quem ensina): só professor e coordenador
+  const podeAdaptar =
+    (perfil === 'PROFESSOR' || perfil === 'COORDENADOR') &&
+    (documento.tipo === 'PLANO_DE_AULA' || documento.tipo === 'ATIVIDADE');
 
   // Monta as ações disponíveis (se for ATIVIDADE, destaca o Tutor de Estudos)
   const acoes = [
@@ -17,6 +24,15 @@ export default function BotaoAcoesIA({ documento, className = '' }) {
             id: 'tutor',
             rotulo: '🎓 Estudar com o Tutor',
             descricao: 'Explicação passo a passo adaptada para você',
+          },
+        ]
+      : []),
+    ...(podeAdaptar
+      ? [
+          {
+            id: 'adaptar',
+            rotulo: '🧩 Adaptar material',
+            descricao: 'Guia metodológico inclusivo para a sala de aula',
           },
         ]
       : []),
@@ -35,6 +51,7 @@ export default function BotaoAcoesIA({ documento, className = '' }) {
     setRect(null);
     if (acao.id === 'resumo') setResumoAberto(true);
     if (acao.id === 'tutor') setTutorAberto(true);
+    if (acao.id === 'adaptar') setAdaptarAberto(true);
   };
 
   return (
@@ -69,6 +86,9 @@ export default function BotaoAcoesIA({ documento, className = '' }) {
 
       {resumoAberto && <ModalResumoIA documento={documento} onFechar={() => setResumoAberto(false)} />}
       {tutorAberto && <ModalTutorIA documento={documento} onFechar={() => setTutorAberto(false)} />}
+      {adaptarAberto && (
+        <ModalAdaptarMaterial documento={documento} onFechar={() => setAdaptarAberto(false)} />
+      )}
     </>
   );
 }

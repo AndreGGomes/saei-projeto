@@ -45,6 +45,7 @@ export default function ModalDocumentosMatricula({ matricula, documentos, loadin
               documentos={documentos.enviados_pelo_aluno}
               onDownload={onDownload}
               onDelete={onDeletar}
+              perfil="COORDENADOR"
             />
 
             {/* 2. DOCUMENTOS ENVIADOS PELO PROFESSOR (Planos de Aula, Atividades) */}
@@ -57,6 +58,7 @@ export default function ModalDocumentosMatricula({ matricula, documentos, loadin
               documentos={documentos.enviados_pelo_professor}
               onDownload={onDownload}
               onDelete={onDeletar}
+              perfil="COORDENADOR"
             />
           </div>
         )}
