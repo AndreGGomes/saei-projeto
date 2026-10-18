@@ -184,8 +184,8 @@ MATERIAL DIDÁTICO PARA ANÁLISE:
 ---
 DIRETRIZES DE AVALIAÇÃO DUA:
 1. 'score_acessibilidade': Atribua uma pontuação global de 0 a 100 com base na clareza, organização visual e objetividade do texto.
-2. 'pontos_positivos': Destaque de 2 a 4 pontos fortes do material (ex.: uso de tópicos, parágrafos curtos, linguagem direta).
-3. 'pontos_de_melhoria': Apresente de 1 a 3 pontos que podem ser aprimorados para tornar o texto mais inclusivo.
+2. 'pontos_positivos': Destaque de 2 a 4 pontos fortes do material (ex.: uso de tópicos, parágrafos curtos, linguagem direta). Se não houver pontos positivos claros, retorne pelo menos um item explicitando isso (ex: "Nenhum ponto positivo de acessibilidade relevante identificado").
+3. 'pontos_de_melhoria': Apresente de 1 a 3 pontos que podem ser aprimorados para tornar o texto mais inclusivo. Se o texto já for perfeitamente acessível, retorne um item indicando isso (ex: "Texto já apresenta excelente estrutura DUA").
 4. 'sugestao_imediata': Forneça uma dica prática e acionável de ouro para o professor aplicar e melhorar o texto imediatamente.
 
 ---
@@ -205,12 +205,9 @@ Responda EXCLUSIVAMENTE em formato JSON válido, respeitando rigorosamente a seg
 
 REGRAS RÍGIDAS DE VALIDAÇÃO:
 - O campo 'score_acessibilidade' DEVE ser estritamente um NÚMERO INTEIRO (ex: 85). NUNCA envie porcentagens (85%), strings ("85") ou frações ("85/100").
-- As listas 'pontos_positivos' e 'pontos_de_melhoria' devem conter frases do tipo string.
+- As listas 'pontos_positivos' e 'pontos_de_melhoria' devem conter frases do tipo string e NUNCA devem vir como listas vazias [].
 - Não inclua nenhuma introdução, saudação ou texto fora do objeto JSON.
 """
 
-        # 1. Envia as instruções e o texto extraído para a Groq exigindo um objeto JSON válido
         conteudo_json_str = self._enviar_prompt(prompt, response_format="json_object")
-
-        # 2. Converte a string JSON recebida para o schema Pydantic garantindo a validação dos tipos
         return IAAcessibilidadeInternal.model_validate_json(conteudo_json_str)
