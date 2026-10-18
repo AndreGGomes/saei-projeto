@@ -37,3 +37,18 @@ class IAAdaptacaoInternal(BaseModel):
     mudancas_sugeridas: List[StrictStr]
     justificativa_inclusiva: str
     dicas_de_abordagem: List[StrictStr]
+
+
+# --- TERMÔMETRO DE ACESSIBILIDADE ---
+
+# Payload de Entrada
+class AvaliarAcessibilidadeRequest(BaseModel):
+    texto_material: str
+
+
+# Saída do Termômetro de Acessibilidade (IA Groq / FastAPI)
+class IAAcessibilidadeInternal(BaseModel):
+    score_acessibilidade: int
+    pontos_positivos: List[StrictStr]
+    pontos_de_melhoria: List[StrictStr]
+    sugestao_imediata: str

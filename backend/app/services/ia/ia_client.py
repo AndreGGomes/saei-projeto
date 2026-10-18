@@ -5,7 +5,7 @@
 import os
 from groq import Groq
 from app.schemas.documento_schemas import IAResumoInternal
-from app.schemas.ia_schemas import IATutorAlunoInternal, IAAdaptacaoInternal
+from app.schemas.ia_schemas import IATutorAlunoInternal, IAAdaptacaoInternal, IAAcessibilidadeInternal
 from app.models import TipoDocumento
 from app.services.ia.resumo_strategies import ResumoStrategyFactory
 from app.services.ia.adaptacao_strategies import AdaptacaoStrategyFactory
@@ -165,3 +165,52 @@ Responda EXCLUSIVAMENTE em formato JSON válido, respeitando rigorosamente a seg
             return IATutorAlunoInternal.model_validate_json(conteudo)
         except Exception as e:
             raise RuntimeError(f"Falha ao gerar tutoria com a IA: {str(e)}")
+
+    def avaliar_acessibilidade(self, texto_material: str) -> IAAcessibilidadeInternal:
+        """
+        Avalia a acessibilidade geral de um material didático com base no Desenho Universal 
+        para a Aprendizagem (DUA) e devolve o feedback estruturado com score de 0 a 100.
+        """
+        prompt = f"""
+Você é um especialista em Desenho Universal para a Aprendizagem (DUA) e acessibilidade pedagógica.
+Sua missão é analisar o texto do material didático fornecido e avaliar seu nível de acessibilidade geral (sem depender de laudos específicos).
+
+---
+MATERIAL DIDÁTICO PARA ANÁLISE:
+\"\"\"
+{texto_material}
+\"\"\"
+
+---
+DIRETRIZES DE AVALIAÇÃO DUA:
+1. 'score_acessibilidade': Atribua uma pontuação global de 0 a 100 com base na clareza, organização visual e objetividade do texto.
+2. 'pontos_positivos': Destaque de 2 a 4 pontos fortes do material (ex.: uso de tópicos, parágrafos curtos, linguagem direta).
+3. 'pontos_de_melhoria': Apresente de 1 a 3 pontos que podem ser aprimorados para tornar o texto mais inclusivo.
+4. 'sugestao_imediata': Forneça uma dica prática e acionável de ouro para o professor aplicar e melhorar o texto imediatamente.
+
+---
+CONTRATO DE RESPOSTA OBRIGATÓRIO:
+Responda EXCLUSIVAMENTE em formato JSON válido, respeitando rigorosamente a seguinte estrutura:
+{{
+    "score_acessibilidade": 85,
+    "pontos_positivos": [
+        "Linguagem direta e objetiva",
+        "Uso adequado de parágrafos curtos"
+    ],
+    "pontos_de_melhoria": [
+        "Uso de termos técnicos sem explicação prévia"
+    ],
+    "sugestao_imediata": "Adicione um pequeno glossário no início para esclarecer os termos técnicos."
+}}
+
+REGRAS RÍGIDAS DE VALIDAÇÃO:
+- O campo 'score_acessibilidade' DEVE ser estritamente um NÚMERO INTEIRO (ex: 85). NUNCA envie porcentagens (85%), strings ("85") ou frações ("85/100").
+- As listas 'pontos_positivos' e 'pontos_de_melhoria' devem conter frases do tipo string.
+- Não inclua nenhuma introdução, saudação ou texto fora do objeto JSON.
+"""
+
+        # 1. Envia as instruções e o texto extraído para a Groq exigindo um objeto JSON válido
+        conteudo_json_str = self._enviar_prompt(prompt, response_format="json_object")
+
+        # 2. Converte a string JSON recebida para o schema Pydantic garantindo a validação dos tipos
+        return IAAcessibilidadeInternal.model_validate_json(conteudo_json_str)
