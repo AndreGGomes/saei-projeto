@@ -46,6 +46,7 @@ class MatriculaResponse(BaseModel):
     class Config:
         from_attributes = True
 
+# Contrato envelope para a listagem de turmas/alunos sob docência do professor logado
 class MatriculasProfessorResponse(BaseModel):
     matriculas: List[MatriculaResponse]
 

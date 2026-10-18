@@ -1,26 +1,23 @@
-
-   venv/
-   .venv/
-   env/
-   ENV/
-   */venv/
-   */.venv/
-   __pycache__/
-   *.pyc
-   .env
-   .env.*
-   !.env.example
-   *.py[cod]
-   *$py.class
-   **/**/__pycache__/
-   node_modules/
-   dist/
-   .env.local
-   .vscode/
-   .idea/
-   .docker/
-
-# Logs
+venv/
+.venv/
+env/
+ENV/
+*/venv/
+*/.venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+*.py[cod]
+*$py.class
+**/**/__pycache__/
+node_modules/
+dist/
+.env.local
+.vscode/
+.idea/
+.docker/
 logs
 *.log
 npm-debug.log*
@@ -28,13 +25,10 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-
 node_modules
 dist
 dist-ssr
 *.local
-
-# Editor directories and files
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -44,3 +38,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+**/__pycache__/
+*.py[cod]
+backend/uploads/
