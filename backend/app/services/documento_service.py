@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi import UploadFile
 
 from app.core.utils.search_helper import buscar_links_por_termos
-from app.models import Usuario, Documento, TipoDocumento
+from app.models import Usuario, Documento, TipoDocumento, UserRole
 from app.repositories.documento_repository import DocumentoRepository
 from app.repositories.matricula_repository import MatriculaRepository
 from app.schemas.documento_schemas import MatriculaDocumentosResponse, DocumentoResponse, ResumoIAResponse
@@ -19,6 +19,8 @@ from app.core.utils.pdf_extractor import PDFExtractor
 from app.services.ia.ia_client import GroqClient
 from app.services.ia.resumo_strategies import ResumoStrategyFactory
 from app.services.documento_permissions import DocumentoPolicy
+from app.core.utils.search_helper import buscar_links_por_termos, buscar_links_detalhados_por_termos
+from app.schemas.ia_schemas import TutorAlunoResponse
 
 class DocumentoService:
     def __init__(
@@ -175,4 +177,64 @@ class DocumentoService:
             proximos_passos_ou_recomendacoes=dados_ia.proximos_passos_ou_recomendacoes,
             links_estudo=links_reais,
             aviso_ia=dados_ia.aviso_ia
+        )
+
+    # --- 6. TUTOR DE ESTUDOS PERSONALIZADO (VISÃO DO ALUNO) ---
+    def gerar_tutoria_documento(self, documento_id: int, usuario_logado: Usuario) -> TutorAlunoResponse:
+        # apenas estudantes
+        if usuario_logado.role != UserRole.ALUNO:
+            raise PermissaoNegadaError("O Tutor de Estudos Personalizado é exclusivo para alunos.")
+        
+        # Confere se o documento da atividade existe no banco
+        documento = self.documento_repo.buscar_por_id(documento_id)
+        if not documento:
+            raise RecursoNaoEncontradoError("Atividade não encontrada.")
+
+        # Valida se quem está pedindo faz parte daquela matrícula (aluno, professor ou tutor)
+        if not self.policy.pode_acessar_resumo(documento, usuario_logado):
+            raise PermissaoNegadaError("Você não tem permissão para acessar esta atividade.")
+
+        # Extrai o texto bruto do PDF da atividade
+        texto_atividade = self.pdf_extractor.extrair_texto(documento.caminho_arquivo)
+        if not texto_atividade:
+            raise ValueError("O arquivo da atividade está vazio ou é ilegível.")
+
+        # Puxa as preferências de aprendizagem que o aluno salvou nesta matrícula
+        matricula = documento.matricula
+        preferencias = (matricula.preferencias_do_aluno or "").strip() or "Nenhuma preferência específica cadastrada."
+
+        # Procura se existem laudos médicos anexados na mesma matrícula para dar contexto ao Tutor
+        todos_docs = self.documento_repo.listar_por_matricula(matricula.id)
+        laudos_textos = []
+        for doc in todos_docs:
+            if doc.tipo == TipoDocumento.LAUDO_MEDICO:
+                try:
+                    txt = self.pdf_extractor.extrair_texto(doc.caminho_arquivo)
+                    if txt:
+                        laudos_textos.append(f"[{doc.titulo}]: {txt[:1000]}")
+                except Exception:
+                    # Se algum PDF de laudo falhar na leitura, ignora e segue sem travar a tutoria
+                    pass
+
+        resumo_laudo = "\n".join(laudos_textos) if laudos_textos else "Nenhum laudo médico anexado na disciplina."
+
+        # Envia tudo para a Groq gerar a explicação adaptada e os termos de pesquisa
+        dados_ia = self.ia_client.gerar_tutoria_aluno(
+            texto_atividade=texto_atividade,
+            resumo_laudo=resumo_laudo,
+            preferencias_aluno=preferencias
+        )
+
+        # Faz a busca no DuckDuckGo com os termos sugeridos pela IA para pegar links reais (título + url)
+        links_reais = buscar_links_detalhados_por_termos(
+            termos=dados_ia.termos_busca_duckduckgo,
+            resumo_laudo=resumo_laudo,
+            preferencias_aluno=preferencias
+        )
+
+        # Devolve o contrato completo para o front-end montar o modal do Tutor
+        return TutorAlunoResponse(
+            explicacao_pedagogica=dados_ia.explicacao_pedagogica,
+            passo_a_passo_resolucao=dados_ia.passo_a_passo_resolucao,
+            links_recomendados=links_reais
         )

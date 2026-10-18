@@ -75,16 +75,19 @@ def get_matricula_service(db: Session = Depends(get_db)) -> MatriculaService:
         aluno_repo=AlunoRepository(db)
     )
 
+# Construtor do Service de Coordenador
 def get_coordenador_service(db: Session = Depends(get_db)) -> CoordenadorService:
     return CoordenadorService(
         coordenador_repo=CoordenadorRepository(db)
     )
 
+# Construtor do Service de Aluno
 def get_aluno_service(db: Session = Depends(get_db)) -> AlunoService:
     return AlunoService(
         aluno_repo=AlunoRepository(db)
     )
 
+# Construtor do Service de Aluno
 def get_documento_service(db: Session = Depends(get_db)) -> DocumentoService:
     return DocumentoService(
         policy=DocumentoPolicy(),
