@@ -31,3 +31,4 @@ google-genai
 PyPDF2
 ddgs
 groq
+duckduckgo_search
