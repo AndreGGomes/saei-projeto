@@ -3,6 +3,7 @@
 # para evitar que a aplicação quebre no boot se a chave de API não estiver configurada no ambiente.
 
 import os
+from typing import Optional
 from groq import Groq
 from app.schemas.documento_schemas import IAResumoInternal
 from app.schemas.ia_schemas import IATutorAlunoInternal, IAAdaptacaoInternal, IAAcessibilidadeInternal
@@ -33,15 +34,28 @@ class GroqClient:
         self, 
         prompt: str, 
         response_format: str = "json_object", 
-        max_tokens: int = 500, 
-        model: str = "qwen/qwen3.8-27b"
+        max_tokens: Optional[int] = None
     ) -> str:
-        """Centraliza o envio de mensagens para o modelo de linguagem e devolve a resposta em texto bruto."""
+        """Centraliza o envio de mensagens para o modelo de linguagem e devolve a resposta em texto bruto.
+
+        `max_tokens` é opcional e só entra na requisição quando o caso de uso informar um valor
+        (ex.: Termômetro DUA). Sem isso, o comportamento padrão das demais chamadas
+        (resumo, adaptação e tutor) permanece exatamente o mesmo de antes.
+        """
         try:
             # Obtém a conexão ativa com a Groq
             client = self._get_client()
             
-            # Dispara a requisição de inferência configurando a saída estrita no formato especificado (JSON)
+            # Parâmetros base da inferência: saída estrita no formato especificado (JSON)
+            parametros = {
+                "response_format": {"type": response_format},
+            }
+
+            # Limite de tokens aplicado apenas quando solicitado explicitamente pelo caso de uso
+            if max_tokens is not None:
+                parametros["max_tokens"] = max_tokens
+
+            # Dispara a requisição de inferência
             chat_completion = client.chat.completions.create(
                 messages=[
                     {
@@ -49,10 +63,9 @@ class GroqClient:
                         "content": prompt,
                     }
                 ],
-                model=model,
-                response_format={"type": response_format},
-                max_tokens=max_tokens,
-                temperature=0.2
+                # Modelo de alto desempenho para seguir contratos e estruturas de dados rígidas
+                model="qwen/qwen3.8-27b",
+                **parametros
             )
             
             # Retorna apenas o corpo textual gerado pelo modelo

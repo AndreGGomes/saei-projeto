@@ -20,9 +20,7 @@ from app.services.ia.ia_client import GroqClient
 from app.services.ia.resumo_strategies import ResumoStrategyFactory
 from app.services.documento_permissions import DocumentoPolicy
 from app.core.utils.search_helper import buscar_links_por_termos, buscar_links_detalhados_por_termos
-from app.schemas.ia_schemas import TutorAlunoResponse, IAAdaptacaoInternal
-from app.schemas.ia_schemas import IAAcessibilidadeInternal
-from app.services.ia.ia_client import GroqClient
+from app.schemas.ia_schemas import TutorAlunoResponse, IAAdaptacaoInternal, IAAcessibilidadeInternal
 
 class DocumentoService:
     def __init__(
