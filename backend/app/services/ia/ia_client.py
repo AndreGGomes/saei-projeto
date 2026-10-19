@@ -29,7 +29,13 @@ class GroqClient:
             
         return self._client
 
-    def _enviar_prompt(self, prompt: str, response_format: str = "json_object") -> str:
+    def _enviar_prompt(
+        self, 
+        prompt: str, 
+        response_format: str = "json_object", 
+        max_tokens: int = 500, 
+        model: str = "qwen/qwen3.8-27b"
+    ) -> str:
         """Centraliza o envio de mensagens para o modelo de linguagem e devolve a resposta em texto bruto."""
         try:
             # Obtém a conexão ativa com a Groq
@@ -43,9 +49,10 @@ class GroqClient:
                         "content": prompt,
                     }
                 ],
-                # Modelo de alto desempenho para seguir contratos e estruturas de dados rígidas
-                model="qwen/qwen3.8-27b",
-                response_format={"type": response_format}
+                model=model,
+                response_format={"type": response_format},
+                max_tokens=max_tokens,
+                temperature=0.2
             )
             
             # Retorna apenas o corpo textual gerado pelo modelo
@@ -190,7 +197,11 @@ DIRETRIZES DE AVALIAÇÃO DUA:
 
 ---
 CONTRATO DE RESPOSTA OBRIGATÓRIO:
-Responda EXCLUSIVAMENTE em formato JSON válido, respeitando rigorosamente a seguinte estrutura:
+Sua resposta DEVE ser um objeto JSON cru (raw JSON).
+NÃO use blocos de código Markdown (NUNCA utilize ```json ou ```).
+NÃO inclua introdução, saudações, explicações ou texto antes/depois do JSON.
+
+Estrutura exata exigida:
 {{
     "score_acessibilidade": 85,
     "pontos_positivos": [
@@ -206,8 +217,11 @@ Responda EXCLUSIVAMENTE em formato JSON válido, respeitando rigorosamente a seg
 REGRAS RÍGIDAS DE VALIDAÇÃO:
 - O campo 'score_acessibilidade' DEVE ser estritamente um NÚMERO INTEIRO (ex: 85). NUNCA envie porcentagens (85%), strings ("85") ou frações ("85/100").
 - As listas 'pontos_positivos' e 'pontos_de_melhoria' devem conter frases do tipo string e NUNCA devem vir como listas vazias [].
-- Não inclua nenhuma introdução, saudação ou texto fora do objeto JSON.
 """
 
-        conteudo_json_str = self._enviar_prompt(prompt, response_format="json_object")
+        conteudo_json_str = self._enviar_prompt(
+            prompt, 
+            response_format="json_object",
+            max_tokens=500
+        )
         return IAAcessibilidadeInternal.model_validate_json(conteudo_json_str)
