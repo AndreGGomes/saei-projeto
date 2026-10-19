@@ -3,18 +3,23 @@ import Popover from './Popover';
 import ModalResumoIA from './ModalResumoIA';
 import ModalTutorIA from './ModalTutorIA';
 import ModalAdaptarMaterial from './ModalAdaptarMaterial';
+import ModalAcessibilidade from './ModalAcessibilidade';
 
 export default function BotaoAcoesIA({ documento, className = '', perfil = 'ALUNO' }) {
   const [rect, setRect] = useState(null);
   const [resumoAberto, setResumoAberto] = useState(false);
   const [tutorAberto, setTutorAberto] = useState(false);
   const [adaptarAberto, setAdaptarAberto] = useState(false);
+  const [acessibilidadeAberta, setAcessibilidadeAberta] = useState(false);
   const ancoraRef = useRef(null);
 
   // A adaptação de materiais é um recurso de mediação (guia para quem ensina): só professor e coordenador
   const podeAdaptar =
     (perfil === 'PROFESSOR' || perfil === 'COORDENADOR') &&
     (documento.tipo === 'PLANO_DE_AULA' || documento.tipo === 'ATIVIDADE');
+
+  // O Termômetro de Acessibilidade (DUA) também avalia material didático de quem ensina
+  const podeAvaliarAcessibilidade = podeAdaptar;
 
   // Monta as ações disponíveis (se for ATIVIDADE, destaca o Tutor de Estudos)
   const acoes = [
@@ -36,6 +41,15 @@ export default function BotaoAcoesIA({ documento, className = '', perfil = 'ALUN
           },
         ]
       : []),
+    ...(podeAvaliarAcessibilidade
+      ? [
+          {
+            id: 'acessibilidade',
+            rotulo: '🌡️ Termômetro DUA',
+            descricao: 'Nota de acessibilidade do material (0 a 100)',
+          },
+        ]
+      : []),
     { id: 'resumo', rotulo: '✨ Gerar resumo', descricao: 'Resumo estruturado do documento' },
   ];
 
@@ -52,6 +66,7 @@ export default function BotaoAcoesIA({ documento, className = '', perfil = 'ALUN
     if (acao.id === 'resumo') setResumoAberto(true);
     if (acao.id === 'tutor') setTutorAberto(true);
     if (acao.id === 'adaptar') setAdaptarAberto(true);
+    if (acao.id === 'acessibilidade') setAcessibilidadeAberta(true);
   };
 
   return (
@@ -88,6 +103,9 @@ export default function BotaoAcoesIA({ documento, className = '', perfil = 'ALUN
       {tutorAberto && <ModalTutorIA documento={documento} onFechar={() => setTutorAberto(false)} />}
       {adaptarAberto && (
         <ModalAdaptarMaterial documento={documento} onFechar={() => setAdaptarAberto(false)} />
+      )}
+      {acessibilidadeAberta && (
+        <ModalAcessibilidade documento={documento} onFechar={() => setAcessibilidadeAberta(false)} />
       )}
     </>
   );
