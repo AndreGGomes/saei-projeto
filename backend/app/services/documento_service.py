@@ -20,7 +20,7 @@ from app.services.ia.ia_client import GroqClient
 from app.services.ia.resumo_strategies import ResumoStrategyFactory
 from app.services.documento_permissions import DocumentoPolicy
 from app.core.utils.search_helper import buscar_links_por_termos, buscar_links_detalhados_por_termos
-from app.schemas.ia_schemas import TutorAlunoResponse, IAAdaptacaoInternal
+from app.schemas.ia_schemas import TutorAlunoResponse, IAAdaptacaoInternal, IAAcessibilidadeInternal
 
 class DocumentoService:
     def __init__(
@@ -281,3 +281,28 @@ class DocumentoService:
             resumo_laudo=resumo_laudo,
             diretrizes_inclusao="Nenhuma diretriz de inclusão específica informada."
         )
+
+    def gerar_avaliacao_acessibilidade_documento(self, documento_id: int, current_user: Usuario) -> IAAcessibilidadeInternal:
+        """
+        Extrai o texto de um documento PDF cadastrado e executa a avaliação de acessibilidade DUA.
+        Exclusivo para PROFESSOR e COORDENADOR.
+        """
+        if current_user.role not in (UserRole.PROFESSOR, UserRole.COORDENADOR):
+            raise PermissaoNegadaError("A avaliação de acessibilidade é exclusiva para professores e coordenadores.")
+
+        # 1. Busca o documento no banco de dados usando o repositório correto
+        documento = self.documento_repo.buscar_por_id(documento_id)
+        if not documento:
+            raise RecursoNaoEncontradoError(f"Documento com ID '{documento_id}' não encontrado.")
+
+        # 2. Checa a permissão de acesso ao documento
+        if not self.policy.pode_acessar_resumo(documento, current_user):
+            raise PermissaoNegadaError("Você não tem permissão para acessar este documento.")
+
+        # 3. Extrai o texto do PDF usando o extrator injetado na classe
+        texto_extraido = self.pdf_extractor.extrair_texto(documento.caminho_arquivo)
+        if not texto_extraido or len(texto_extraido.strip()) < 10:
+            raise ValueError("O arquivo do documento está vazio ou contém texto ilegível para análise.")
+
+        # 4. Chama a IA reutilizando a instância self.ia_client
+        return self.ia_client.avaliar_acessibilidade(texto_material=texto_extraido)

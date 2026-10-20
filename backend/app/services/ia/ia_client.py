@@ -3,9 +3,10 @@
 # para evitar que a aplicação quebre no boot se a chave de API não estiver configurada no ambiente.
 
 import os
+from typing import Optional
 from groq import Groq
 from app.schemas.documento_schemas import IAResumoInternal
-from app.schemas.ia_schemas import IATutorAlunoInternal, IAAdaptacaoInternal
+from app.schemas.ia_schemas import IATutorAlunoInternal, IAAdaptacaoInternal, IAAcessibilidadeInternal
 from app.models import TipoDocumento
 from app.services.ia.resumo_strategies import ResumoStrategyFactory
 from app.services.ia.adaptacao_strategies import AdaptacaoStrategyFactory
@@ -29,13 +30,32 @@ class GroqClient:
             
         return self._client
 
-    def _enviar_prompt(self, prompt: str, response_format: str = "json_object") -> str:
-        """Centraliza o envio de mensagens para o modelo de linguagem e devolve a resposta em texto bruto."""
+    def _enviar_prompt(
+        self, 
+        prompt: str, 
+        response_format: str = "json_object", 
+        max_tokens: Optional[int] = None
+    ) -> str:
+        """Centraliza o envio de mensagens para o modelo de linguagem e devolve a resposta em texto bruto.
+
+        `max_tokens` é opcional e só entra na requisição quando o caso de uso informar um valor
+        (ex.: Termômetro DUA). Sem isso, o comportamento padrão das demais chamadas
+        (resumo, adaptação e tutor) permanece exatamente o mesmo de antes.
+        """
         try:
             # Obtém a conexão ativa com a Groq
             client = self._get_client()
             
-            # Dispara a requisição de inferência configurando a saída estrita no formato especificado (JSON)
+            # Parâmetros base da inferência: saída estrita no formato especificado (JSON)
+            parametros = {
+                "response_format": {"type": response_format},
+            }
+
+            # Limite de tokens aplicado apenas quando solicitado explicitamente pelo caso de uso
+            if max_tokens is not None:
+                parametros["max_tokens"] = max_tokens
+
+            # Dispara a requisição de inferência
             chat_completion = client.chat.completions.create(
                 messages=[
                     {
@@ -45,7 +65,7 @@ class GroqClient:
                 ],
                 # Modelo de alto desempenho para seguir contratos e estruturas de dados rígidas
                 model="qwen/qwen3.8-27b",
-                response_format={"type": response_format}
+                **parametros
             )
             
             # Retorna apenas o corpo textual gerado pelo modelo
@@ -165,3 +185,56 @@ Responda EXCLUSIVAMENTE em formato JSON válido, respeitando rigorosamente a seg
             return IATutorAlunoInternal.model_validate_json(conteudo)
         except Exception as e:
             raise RuntimeError(f"Falha ao gerar tutoria com a IA: {str(e)}")
+
+    def avaliar_acessibilidade(self, texto_material: str) -> IAAcessibilidadeInternal:
+        """
+        Avalia a acessibilidade geral de um material didático com base no Desenho Universal 
+        para a Aprendizagem (DUA) e devolve o feedback estruturado com score de 0 a 100.
+        """
+        prompt = f"""
+Você é um especialista em Desenho Universal para a Aprendizagem (DUA) e acessibilidade pedagógica.
+Sua missão é analisar o texto do material didático fornecido e avaliar seu nível de acessibilidade geral (sem depender de laudos específicos).
+
+---
+MATERIAL DIDÁTICO PARA ANÁLISE:
+\"\"\"
+{texto_material}
+\"\"\"
+
+---
+DIRETRIZES DE AVALIAÇÃO DUA:
+1. 'score_acessibilidade': Atribua uma pontuação global de 0 a 100 com base na clareza, organização visual e objetividade do texto.
+2. 'pontos_positivos': Destaque de 2 a 4 pontos fortes do material (ex.: uso de tópicos, parágrafos curtos, linguagem direta). Se não houver pontos positivos claros, retorne pelo menos um item explicitando isso (ex: "Nenhum ponto positivo de acessibilidade relevante identificado").
+3. 'pontos_de_melhoria': Apresente de 1 a 3 pontos que podem ser aprimorados para tornar o texto mais inclusivo. Se o texto já for perfeitamente acessível, retorne um item indicando isso (ex: "Texto já apresenta excelente estrutura DUA").
+4. 'sugestao_imediata': Forneça uma dica prática e acionável de ouro para o professor aplicar e melhorar o texto imediatamente.
+
+---
+CONTRATO DE RESPOSTA OBRIGATÓRIO:
+Sua resposta DEVE ser um objeto JSON cru (raw JSON).
+NÃO use blocos de código Markdown (NUNCA utilize ```json ou ```).
+NÃO inclua introdução, saudações, explicações ou texto antes/depois do JSON.
+
+Estrutura exata exigida:
+{{
+    "score_acessibilidade": 85,
+    "pontos_positivos": [
+        "Linguagem direta e objetiva",
+        "Uso adequado de parágrafos curtos"
+    ],
+    "pontos_de_melhoria": [
+        "Uso de termos técnicos sem explicação prévia"
+    ],
+    "sugestao_imediata": "Adicione um pequeno glossário no início para esclarecer os termos técnicos."
+}}
+
+REGRAS RÍGIDAS DE VALIDAÇÃO:
+- O campo 'score_acessibilidade' DEVE ser estritamente um NÚMERO INTEIRO (ex: 85). NUNCA envie porcentagens (85%), strings ("85") ou frações ("85/100").
+- As listas 'pontos_positivos' e 'pontos_de_melhoria' devem conter frases do tipo string e NUNCA devem vir como listas vazias [].
+"""
+
+        conteudo_json_str = self._enviar_prompt(
+            prompt, 
+            response_format="json_object",
+            max_tokens=500
+        )
+        return IAAcessibilidadeInternal.model_validate_json(conteudo_json_str)
