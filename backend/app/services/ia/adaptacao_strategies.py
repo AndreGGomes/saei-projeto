@@ -5,7 +5,7 @@ from app.core.utils.diretrizes_loader import obter_diretrizes_inclusao
 class BaseAdaptacaoStrategy(ABC):
 
     @abstractmethod
-    def gerar_prompt(self, texto_material: str, resumo_laudo: str, diretrizes_inclusao: str) -> str:
+    def gerar_prompt(self, texto_material: str, resumo_laudo: str) -> str:
         pass
 
     @abstractmethod
@@ -36,7 +36,7 @@ class BaseAdaptacaoStrategy(ABC):
         linhas = [f"- {chave}: {texto}" for chave, texto in diretrizes.items()]
         return "\n".join(linhas)
 
-    def montar_prompt(self, texto_material: str, resumo_laudo: str, diretrizes_inclusao: str) -> str:
+    def montar_prompt(self, texto_material: str, resumo_laudo: str) -> str:
         return f"""Você é um especialista em pedagogia inclusiva e Desenho Universal de Aprendizagem (DUA).
 Sua missão é adaptar o material pedagógico abaixo para um estudante com Necessidades Educacionais Específicas (NEE).
 
@@ -47,9 +47,6 @@ REGRAS DE OURO (REJEIÇÃO DE ALUCINAÇÃO):
 
 --- CONTEXTO CLÍNICO DO ESTUDANTE (RESUMO DO LAUDO) ---
 {resumo_laudo}
-
---- DIRETRIZES DE INCLUSÃO INFORMADAS (PELO COORDENADOR/PROFESSOR) ---
-{diretrizes_inclusao}
 
 --- DIRETRIZES INSTITUCIONAIS DE EDUCAÇÃO ESPECIAL E DUA (SAEI) ---
 {self._obter_diretrizes_institucionais()}
@@ -77,8 +74,8 @@ class AdaptacaoPlanoAulaStrategy(BaseAdaptacaoStrategy):
             "Não altere a ementa ou os objetos de conhecimento (a BNCC deve ser mantida); altere apenas o formato de entrega e cobrança."
         )
 
-    def gerar_prompt(self, texto_material: str, resumo_laudo: str, diretrizes_inclusao: str) -> str:
-        return self.montar_prompt(texto_material, resumo_laudo, diretrizes_inclusao)
+    def gerar_prompt(self, texto_material: str, resumo_laudo: str) -> str:
+        return self.montar_prompt(texto_material, resumo_laudo)
 
 class AdaptacaoAtividadeStrategy(BaseAdaptacaoStrategy):
 
@@ -90,8 +87,8 @@ class AdaptacaoAtividadeStrategy(BaseAdaptacaoStrategy):
             "Indique exatamente qual questão ou parágrafo do documento precisa de intervenção (ex: 'Na Questão 2, altere o formato para...')."
         )
 
-    def gerar_prompt(self, texto_material: str, resumo_laudo: str, diretrizes_inclusao: str) -> str:
-        return self.montar_prompt(texto_material, resumo_laudo, diretrizes_inclusao)
+    def gerar_prompt(self, texto_material: str, resumo_laudo: str) -> str:
+        return self.montar_prompt(texto_material, resumo_laudo)
 # Fábrica de estratégias: seleciona em tempo de execução a regra adequada a partir do enum TipoDocumento
 class AdaptacaoStrategyFactory:
 

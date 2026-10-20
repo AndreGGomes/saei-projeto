@@ -93,17 +93,15 @@ class GroqClient:
         self,
         texto_material: str,
         tipo_documento: TipoDocumento,
-        resumo_laudo: str,
-        diretrizes_inclusao: str
+        resumo_laudo: str
     ) -> IAAdaptacaoInternal:
-        """Adapta um plano de aula ou atividade com base no laudo e nas diretrizes de inclusão.
+        """Adapta um plano de aula ou atividade com base no laudo e nas diretrizes institucionais de inclusão (JSON da SAEI).
         O processamento é 100% textual (sem busca externa) e o retorno é validado no schema interno."""
         # 1. Seleciona a estratégia conforme o tipo do material (foco em sala ou em estrutura de exercício)
         estrategia = AdaptacaoStrategyFactory.get_strategy(tipo_documento)
         prompt = estrategia.gerar_prompt(
             texto_material=texto_material,
-            resumo_laudo=resumo_laudo,
-            diretrizes_inclusao=diretrizes_inclusao
+            resumo_laudo=resumo_laudo
         )
 
         # 2. Envia para a Groq exigindo um objeto JSON válido

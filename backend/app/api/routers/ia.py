@@ -98,8 +98,7 @@ def adaptar_material(
         return ia_client.adaptar_material(
             texto_material=dados.texto_material,
             tipo_documento=dados.tipo_documento,
-            resumo_laudo=dados.resumo_laudo or "Nenhum laudo informado.",
-            diretrizes_inclusao=dados.diretrizes_inclusao or "Nenhuma diretriz de inclusão específica informada."
+            resumo_laudo=dados.resumo_laudo or "Nenhum laudo informado."
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

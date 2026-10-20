@@ -27,7 +27,6 @@ class AdaptarMaterialRequest(BaseModel):
     texto_material: str
     tipo_documento: TipoDocumento
     resumo_laudo: Optional[str] = "Nenhum laudo informado."
-    diretrizes_inclusao: Optional[str] = "Nenhuma diretriz de inclusão específica informada."
 
 
 # O que a IA da Groq devolve para o FastAPI (Uso Interno) na adaptação de materiais.

@@ -278,8 +278,7 @@ class DocumentoService:
         return self.ia_client.adaptar_material(
             texto_material=texto_material,
             tipo_documento=documento.tipo,
-            resumo_laudo=resumo_laudo,
-            diretrizes_inclusao="Nenhuma diretriz de inclusão específica informada."
+            resumo_laudo=resumo_laudo
         )
 
     def gerar_avaliacao_acessibilidade_documento(self, documento_id: int, current_user: Usuario) -> IAAcessibilidadeInternal:
