@@ -13,10 +13,9 @@ from app.services.ia.adaptacao_strategies import AdaptacaoStrategyFactory
 
 class GroqClient:
     def __init__(self):
-        # Apenas lê as chaves das variáveis de ambiente na inicialização sem instanciar os clientes de imediato.
-        # Isso impede que o servidor caia ao subir caso a chave não esteja presente em testes ou migrações.
         # GROQ_API_KEY é a primária e GROQ_API_KEY_B é a reserva ("plano B"): se a primária falhar
         # na hora da requisição, o _enviar_prompt tenta a reserva antes de devolver erro ao chamador.
+        # As chaves são pegas lá do ambiente do docker, estão localizadas em docker-compose.yml
         chaves = [k for k in (os.getenv("GROQ_API_KEY"), os.getenv("GROQ_API_KEY_B")) if k]
         # dict.fromkeys preserva a ordem e evita tentar duas vezes a mesma chave duplicada
         self._api_keys = list(dict.fromkeys(chaves))
@@ -37,11 +36,8 @@ class GroqClient:
         response_format: str = "json_object", 
         max_tokens: Optional[int] = None
     ) -> str:
-        """Centraliza o envio de mensagens para o modelo de linguagem e devolve a resposta em texto bruto.
-
-        `max_tokens` é opcional e só entra na requisição quando o caso de uso informar um valor
-        (ex.: Termômetro DUA). Sem isso, o comportamento padrão das demais chamadas
-        (resumo, adaptação e tutor) permanece exatamente o mesmo de antes.
+        """
+        max_token é um optional, visto que a feature do termômetro chama essa quantidade de tokens (feito por william)
         """
         # Sem nenhuma chave configurada não há o que tentar: avisa na hora (como antes).
         if not self._api_keys:
