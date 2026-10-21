@@ -2,24 +2,27 @@
 
 from typing import List
 
-from pydantic import BaseModel, EmailStr
+from pydantic import AliasPath, BaseModel, EmailStr, Field, field_validator
 from app.schemas.disciplina_schemas import DisciplinaResponse
 
 # Resumo de saída do aluno
 class AlunoResumoResponse(BaseModel):
-    nome: str
+    # O nome mora no usuário dono do perfil; o alias faz o schema ler direto do objeto do banco
+    nome: str = Field(validation_alias=AliasPath("usuario", "nome"))
     matricula: str
 
     class Config:
         from_attributes = True
+        populate_by_name = True
 
 # Resumo de saída do professor
 class ProfessorResumoResponse(BaseModel):
-    nome: str
-    email: EmailStr
+    nome: str = Field(validation_alias=AliasPath("usuario", "nome"))
+    email: EmailStr = Field(validation_alias=AliasPath("usuario", "email"))
 
     class Config:
         from_attributes = True
+        populate_by_name = True
 
 # Formulário de criação de matrícula legível
 class MatriculaCreate(BaseModel):
@@ -45,6 +48,12 @@ class MatriculaResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+    # Preferências nascem vazias quando a matrícula é criada
+    @field_validator("preferencias_do_aluno", mode="before")
+    @classmethod
+    def preferencia_vazia_vira_string(cls, valor):
+        return valor or ""
 
 # Contrato envelope para a listagem de turmas/alunos sob docência do professor logado
 class MatriculasProfessorResponse(BaseModel):
