@@ -13,22 +13,22 @@ from app.services.ia.adaptacao_strategies import AdaptacaoStrategyFactory
 
 class GroqClient:
     def __init__(self):
-        # Apenas lê a chave das variáveis de ambiente na inicialização sem instanciar o cliente de imediato.
-        # Isso impede que o servidor caia ao subir caso a chave não esteja presente em testes ou migrações.
-        self._api_key = os.getenv("GROQ_API_KEY")
-        self._client = None
+        # GROQ_API_KEY é a primária e GROQ_API_KEY_B é a reserva ("plano B"): se a primária falhar
+        # na hora da requisição, o _enviar_prompt tenta a reserva antes de devolver erro ao chamador.
+        # As chaves são pegas lá do ambiente do docker, estão localizadas em docker-compose.yml
+        chaves = [k for k in (os.getenv("GROQ_API_KEY"), os.getenv("GROQ_API_KEY_B")) if k]
+        # dict.fromkeys preserva a ordem e evita tentar duas vezes a mesma chave duplicada
+        self._api_keys = list(dict.fromkeys(chaves))
+        self._clients = {}
 
-    def _get_client(self) -> Groq:
-        """Inicializa e devolve a instância do cliente Groq sob demanda (Lazy Loading)."""
-        # Se a chave não existir no ambiente no momento em que a rota de IA for acionada, estoura o erro.
-        if not self._api_key:
-            raise RuntimeError("GROQ_API_KEY não configurada no ambiente.")
-        
+    def _get_client(self, api_key: str) -> Groq:
+        """Inicializa e devolve o cliente Groq de uma chave sob demanda (Lazy Loading, um por chave)."""
         # Cria a conexão com a SDK da Groq apenas na primeira utilização e reutiliza nas chamadas seguintes.
-        if not self._client:
-            self._client = Groq(api_key=self._api_key)
-            
-        return self._client
+        client = self._clients.get(api_key)
+        if not client:
+            client = Groq(api_key=api_key)
+            self._clients[api_key] = client
+        return client
 
     def _enviar_prompt(
         self, 
@@ -36,44 +36,54 @@ class GroqClient:
         response_format: str = "json_object", 
         max_tokens: Optional[int] = None
     ) -> str:
-        """Centraliza o envio de mensagens para o modelo de linguagem e devolve a resposta em texto bruto.
-
-        `max_tokens` é opcional e só entra na requisição quando o caso de uso informar um valor
-        (ex.: Termômetro DUA). Sem isso, o comportamento padrão das demais chamadas
-        (resumo, adaptação e tutor) permanece exatamente o mesmo de antes.
         """
-        try:
-            # Obtém a conexão ativa com a Groq
-            client = self._get_client()
-            
-            # Parâmetros base da inferência: saída estrita no formato especificado (JSON)
-            parametros = {
-                "response_format": {"type": response_format},
-            }
+        max_token é um optional, visto que a feature do termômetro chama essa quantidade de tokens (feito por william)
+        """
+        # Sem nenhuma chave configurada não há o que tentar: avisa na hora (como antes).
+        if not self._api_keys:
+            raise RuntimeError("GROQ_API_KEY não configurada no ambiente.")
 
-            # Limite de tokens aplicado apenas quando solicitado explicitamente pelo caso de uso
-            if max_tokens is not None:
-                parametros["max_tokens"] = max_tokens
+        # Parâmetros base da inferência: saída estrita no formato especificado (JSON)
+        parametros = {
+            "response_format": {"type": response_format},
+        }
 
-            # Dispara a requisição de inferência
-            chat_completion = client.chat.completions.create(
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt,
-                    }
-                ],
-                # Modelo de alto desempenho para seguir contratos e estruturas de dados rígidas
-                model="qwen/qwen3.8-27b",
-                **parametros
-            )
-            
-            # Retorna apenas o corpo textual gerado pelo modelo
-            return chat_completion.choices[0].message.content
-            
-        except Exception as e:
-            # Captura falhas de conexão, limites de cota ou indisponibilidade da API externa e encapsula em RuntimeError
-            raise RuntimeError(f"Falha na comunicação com a API da IA: {str(e)}")
+        # Limite de tokens aplicado apenas quando solicitado explicitamente pelo caso de uso
+        if max_tokens is not None:
+            parametros["max_tokens"] = max_tokens
+
+        # Tenta cada chave em ordem (primária e depois a reserva). Só devolve erro
+        # quando TODAS as chaves configuradas falharem.
+        ultimo_erro = None
+        for api_key in self._api_keys:
+            try:
+                # Obtém a conexão ativa com a Groq para esta chave
+                client = self._get_client(api_key)
+
+                # Dispara a requisição de inferência
+                chat_completion = client.chat.completions.create(
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": prompt,
+                        }
+                    ],
+                    # Modelo de alto desempenho para seguir contratos e estruturas de dados rígidas
+                    model="qwen/qwen3.8-27b",
+                    **parametros
+                )
+
+                # Retorna apenas o corpo textual gerado pelo modelo
+                return chat_completion.choices[0].message.content
+
+            except Exception as e:
+                # Captura falhas de conexão, limites de cota, chave inválida ou indisponibilidade da API:
+                # anota o erro e passa para a próxima chave (plano B) antes de desistir.
+                ultimo_erro = e
+                continue
+
+        # Todas as chaves falharam: encapsula o último erro em RuntimeError para as rotas
+        raise RuntimeError(f"Falha na comunicação com a API da IA: {str(ultimo_erro)}")
 
     # --- Métodos Públicos (Casos de Uso) ---
 
@@ -93,17 +103,15 @@ class GroqClient:
         self,
         texto_material: str,
         tipo_documento: TipoDocumento,
-        resumo_laudo: str,
-        diretrizes_inclusao: str
+        resumo_laudo: str
     ) -> IAAdaptacaoInternal:
-        """Adapta um plano de aula ou atividade com base no laudo e nas diretrizes de inclusão.
+        """Adapta um plano de aula ou atividade com base no laudo e nas diretrizes institucionais de inclusão (JSON da SAEI).
         O processamento é 100% textual (sem busca externa) e o retorno é validado no schema interno."""
         # 1. Seleciona a estratégia conforme o tipo do material (foco em sala ou em estrutura de exercício)
         estrategia = AdaptacaoStrategyFactory.get_strategy(tipo_documento)
         prompt = estrategia.gerar_prompt(
             texto_material=texto_material,
-            resumo_laudo=resumo_laudo,
-            diretrizes_inclusao=diretrizes_inclusao
+            resumo_laudo=resumo_laudo
         )
 
         # 2. Envia para a Groq exigindo um objeto JSON válido
@@ -175,13 +183,9 @@ Responda EXCLUSIVAMENTE em formato JSON válido, respeitando rigorosamente a seg
 """
 
         try:
-            self.client = Groq(api_key=self._api_key)
-            chat_completion = self.client.chat.completions.create(
-                messages=[{"role": "user", "content": prompt}],
-                model="qwen/qwen3.8-27b",
-                response_format={"type": "json_object"}
-            )
-            conteudo = chat_completion.choices[0].message.content
+            # Usa o canal central (_enviar_prompt): mesmo modelo/JSON de antes e com
+            # fallback automático para a chave reserva (GROQ_API_KEY_B) em caso de falha.
+            conteudo = self._enviar_prompt(prompt)
             return IATutorAlunoInternal.model_validate_json(conteudo)
         except Exception as e:
             raise RuntimeError(f"Falha ao gerar tutoria com a IA: {str(e)}")

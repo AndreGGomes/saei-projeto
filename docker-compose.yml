@@ -29,11 +29,13 @@ services:
     container_name: saei_backend
     ports:
       - "8000:8000" # Acesse a API em http://localhost:8000
+    # As chaves da API da Groq ficam no .env da raiz (primária e reserva "plano B").
+    # Copie .env.example para .env e preencha antes de subir o stack.
+    env_file:
+      - .env
     environment:
       DATABASE_URL: postgresql://saei_user:saei_password@db:5432/saei_db
       SECRET_KEY: dcvEek8zldAUpcB3OT9h3nczSpB3nq35v7WMXtUSgOB
-      GEMINI_API_KEY: AQ.Ab8RN6LHzdcwG6t5F8NLxbJRjESqQ5L5OSBikBuE4-Om5SXqfA
-      GROQ_API_KEY: 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
     volumes:
       - ./backend:/app
     depends_on:
