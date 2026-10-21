@@ -26,29 +26,8 @@ class MatriculaService:
         self.disciplina_repo = disciplina_repo
         self.aluno_repo = aluno_repo
 
-    # Formatação das matrículas
-    def _formatar_matricula_response(self, matricula) -> dict:
-        return {
-            "id": matricula.id,
-            "aluno": {
-                "nome": matricula.aluno.usuario.nome,
-                "matricula": matricula.aluno.matricula
-            },
-            "professor": {
-                "nome": matricula.professor.usuario.nome,
-                "email": matricula.professor.usuario.email
-            },
-            "disciplina": {
-                "id": matricula.disciplina.id,
-                "nome": matricula.disciplina.nome,
-                "codigo": matricula.disciplina.codigo
-            },
-            # Preferências pessoais do aluno; nascem vazias quando a matrícula é criada
-            "preferencias_do_aluno": matricula.preferencias_do_aluno or ""
-        }
-
     # Validação de Integridade Referencial em Camada de Aplicação
-    def criar_matricula(self, dados: MatriculaCreate, usuario_logado: Usuario) -> dict:
+    def criar_matricula(self, dados: MatriculaCreate, usuario_logado: Usuario) -> MatriculaResponse:
         # Apenas a coordenação pode mexer nas matrículas
         exigir_coordenador(usuario_logado, "Apenas coordenadores podem gerenciar matrículas.")
         
@@ -75,10 +54,10 @@ class MatriculaService:
             professor_id=professor.usuario_id, 
             disciplina_id=disciplina.id
         )
-        return self._formatar_matricula_response(matricula_salva)
+        return MatriculaResponse.model_validate(matricula_salva)
 
     # Confere se a matrícula existe, valida se o novo_professor_id é realmente um professor cadastrado e executa a troca.
-    def mudar_professor(self, matricula_id: int, novo_professor_email: str, usuario_logado: Usuario) -> dict:
+    def mudar_professor(self, matricula_id: int, novo_professor_email: str, usuario_logado: Usuario) -> MatriculaResponse:
         exigir_coordenador(usuario_logado, "Apenas coordenadores podem gerenciar matrículas.")
         
         matricula = self.matricula_repo.buscar_por_id(matricula_id)
@@ -90,12 +69,12 @@ class MatriculaService:
             raise RecursoNaoEncontradoError(f"Novo professor com e-mail '{novo_professor_email}' não encontrado.")
             
         matricula_atualizada = self.matricula_repo.atualizar_professor(matricula, novo_professor.usuario_id)
-        return self._formatar_matricula_response(matricula_atualizada)
+        return MatriculaResponse.model_validate(matricula_atualizada)
 
     #--- Restrito ao próprio aluno: grava as preferências dele de aprendizado e inclusão numa matrícula específica.
     def atualizar_preferencias_do_aluno(
         self, matricula_id: int, preferencias: str, usuario_logado: Usuario
-    ) -> dict:
+    ) -> MatriculaResponse:
         # Só o papel ALUNO pode alterar preferências, e apenas o dono da matrícula
         if usuario_logado.role != UserRole.ALUNO:
             raise PermissaoNegadaError("Apenas o próprio aluno pode alterar suas preferências de aprendizado.")
@@ -108,7 +87,7 @@ class MatriculaService:
             raise PermissaoNegadaError("Apenas o aluno dono desta matrícula pode alterar suas preferências de aprendizado.")
 
         matricula_atualizada = self.matricula_repo.atualizar_preferencias(matricula, preferencias)
-        return self._formatar_matricula_response(matricula_atualizada)
+        return MatriculaResponse.model_validate(matricula_atualizada)
     #---
 
     #--- Métodos restritos à coordenação para cancelar vínculos ou emitir a lista completa de todas as matrículas cadastradas.
@@ -121,10 +100,10 @@ class MatriculaService:
             
         self.matricula_repo.deletar(matricula)
 
-    def listar_todas(self, usuario_logado: Usuario) -> list[dict]:
+    def listar_todas(self, usuario_logado: Usuario) -> list[MatriculaResponse]:
         exigir_coordenador(usuario_logado, "Apenas coordenadores podem gerenciar matrículas.")
         matriculas = self.matricula_repo.listar_todas()
-        return [self._formatar_matricula_response(m) for m in matriculas]
+        return [MatriculaResponse.model_validate(m) for m in matriculas]
     #---
 
     # Listagem de matrículas do Professor
@@ -134,14 +113,9 @@ class MatriculaService:
         
         if usuario_logado.role == UserRole.PROFESSOR:
             matriculas = self.matricula_repo.listar_por_professor(usuario_logado.id)
-            # Reutiliza o mesmo formatador da listagem da coordenação (evita a regra duplicada)
-            matriculas_formatadas = [
-                self._formatar_matricula_response(m)
-                for m in matriculas
-            ]
-            # Retorna o schema específico do Professor
+            # O schema MatriculaResponse é quem faz o mapeamento (mesma regra da listagem da coordenação)
             return MatriculasProfessorResponse(
-                matriculas=matriculas_formatadas
+                matriculas=[MatriculaResponse.model_validate(m) for m in matriculas]
             )
         else:
             raise PermissaoNegadaError("Apenas professores podem visualizar a lista com suas próprias matrículas.")
@@ -149,11 +123,11 @@ class MatriculaService:
     # Listagem de matrículas do Aluno (painel do aluno)
     def listar_sob_responsabilidade_por_usuario_logado_aluno(
         self, usuario_logado: Usuario
-    ) -> list[dict]:
+    ) -> list[MatriculaResponse]:
 
         if usuario_logado.role == UserRole.ALUNO:
             matriculas = self.matricula_repo.listar_por_aluno(usuario_logado.id)
-            # Reutiliza o mesmo formatador das demais listagens (evita regra duplicada)
-            return [self._formatar_matricula_response(m) for m in matriculas]
+            # O schema MatriculaResponse é quem faz o mapeamento (mesma regra das demais listagens)
+            return [MatriculaResponse.model_validate(m) for m in matriculas]
         else:
             raise PermissaoNegadaError("Apenas alunos podem visualizar a lista com suas próprias matrículas.")
