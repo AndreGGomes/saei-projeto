@@ -12,7 +12,8 @@ from app.repositories.matricula_repository import MatriculaRepository
 from app.schemas.documento_schemas import MatriculaDocumentosResponse, DocumentoResponse, ResumoIAResponse
 from app.core.exceptions import (
     PermissaoNegadaError,
-    RecursoNaoEncontradoError
+    RecursoNaoEncontradoError,
+    DadosInvalidosError
 )
 from app.core.utils.arquivo_storage import ArquivoStorage
 from app.core.utils.pdf_extractor import PDFExtractor
@@ -160,7 +161,7 @@ class DocumentoService:
         # Abre o arquivo PDF no disco e extrai todo o conteúdo de texto legível
         texto_cru = self.pdf_extractor.extrair_texto(documento.caminho_arquivo)
         if not texto_cru:
-            raise ValueError("O documento está vazio ou é ilegível.")
+            raise DadosInvalidosError("O documento está vazio ou é ilegível.")
 
         # O Service agora delega completamente a inteligência de prompt e IA ao client
         dados_ia = self.ia_client.processar_resumo_estruturado(texto_cru, documento.tipo)
@@ -197,7 +198,7 @@ class DocumentoService:
         # Extrai o texto bruto do PDF da atividade
         texto_atividade = self.pdf_extractor.extrair_texto(documento.caminho_arquivo)
         if not texto_atividade:
-            raise ValueError("O arquivo da atividade está vazio ou é ilegível.")
+            raise DadosInvalidosError("O arquivo da atividade está vazio ou é ilegível.")
 
         # Puxa as preferências de aprendizagem que o aluno salvou nesta matrícula
         matricula = documento.matricula
@@ -257,7 +258,7 @@ class DocumentoService:
         # Extrai o texto bruto do PDF do material pedagógico
         texto_material = self.pdf_extractor.extrair_texto(documento.caminho_arquivo)
         if not texto_material:
-            raise ValueError("O arquivo do material está vazio ou é ilegível.")
+            raise DadosInvalidosError("O arquivo do material está vazio ou é ilegível.")
 
         # Procura laudos médicos anexados na mesma matrícula para dar contexto clínico à adaptação
         todos_docs = self.documento_repo.listar_por_matricula(documento.matricula_id)
@@ -301,7 +302,7 @@ class DocumentoService:
         # 3. Extrai o texto do PDF usando o extrator injetado na classe
         texto_extraido = self.pdf_extractor.extrair_texto(documento.caminho_arquivo)
         if not texto_extraido or len(texto_extraido.strip()) < 10:
-            raise ValueError("O arquivo do documento está vazio ou contém texto ilegível para análise.")
+            raise DadosInvalidosError("O arquivo do documento está vazio ou contém texto ilegível para análise.")
 
         # 4. Chama a IA reutilizando a instância self.ia_client
         return self.ia_client.avaliar_acessibilidade(texto_material=texto_extraido)

@@ -37,3 +37,17 @@ class TurmaNaoEncontradaError(Exception):
 
 class DisciplinaNaoEncontradaError(Exception):
     pass
+
+# Erro 400 (Bad Request): o pedido chegou em um formato que o domínio não consegue processar
+# (ex.: PDF vazio ou ilegível, texto curto demais para análise).
+class DadosInvalidosError(Exception):
+    pass
+
+# Erro 502 (Bad Gateway): a dependência externa (Groq) falhou ou está indisponível.
+class ServicoIAIndisponivelError(Exception):
+    pass
+
+# Erro 502 (Bad Gateway): a IA respondeu, mas fora do contrato JSON combinado
+# (JSON truncado, campo faltando, nota impossível).
+class RespostaIAInvalidaError(Exception):
+    pass

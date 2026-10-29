@@ -3,13 +3,20 @@
 # para evitar que a aplicação quebre no boot se a chave de API não estiver configurada no ambiente.
 
 import os
-from typing import Optional
+from typing import Optional, Type, TypeVar
 from groq import Groq
+from pydantic import BaseModel, ValidationError
+
+from app.core.exceptions import ServicoIAIndisponivelError, RespostaIAInvalidaError
 from app.schemas.documento_schemas import IAResumoInternal
 from app.schemas.ia_schemas import IATutorAlunoInternal, IAAdaptacaoInternal, IAAcessibilidadeInternal
 from app.models import TipoDocumento
 from app.services.ia.resumo_strategies import ResumoStrategyFactory
 from app.services.ia.adaptacao_strategies import AdaptacaoStrategyFactory
+from app.services.ia.avaliacao_strategies import AvaliacaoAcessibilidadeStrategy
+
+# Schema Pydantic de saída esperado de cada caso de uso
+SchemaT = TypeVar("SchemaT", bound=BaseModel)
 
 class GroqClient:
     def __init__(self):
@@ -34,14 +41,15 @@ class GroqClient:
         self, 
         prompt: str, 
         response_format: str = "json_object", 
-        max_tokens: Optional[int] = None
+        max_tokens: Optional[int] = None,
+        temperature: Optional[float] = None
     ) -> str:
         """
-        max_token é um optional, visto que a feature do termômetro chama essa quantidade de tokens (feito por william)
+        max_tokens e temperature são opcionais: cada caso de uso escolhe o seu ajuste.
         """
         # Sem nenhuma chave configurada não há o que tentar: avisa na hora (como antes).
         if not self._api_keys:
-            raise RuntimeError("GROQ_API_KEY não configurada no ambiente.")
+            raise ServicoIAIndisponivelError("GROQ_API_KEY não configurada no ambiente.")
 
         # Parâmetros base da inferência: saída estrita no formato especificado (JSON)
         parametros = {
@@ -51,6 +59,10 @@ class GroqClient:
         # Limite de tokens aplicado apenas quando solicitado explicitamente pelo caso de uso
         if max_tokens is not None:
             parametros["max_tokens"] = max_tokens
+
+        # Temperatura baixa/exata reduz a variância entre duas avaliações do mesmo texto
+        if temperature is not None:
+            parametros["temperature"] = temperature
 
         # Tenta cada chave em ordem (primária e depois a reserva). Só devolve erro
         # quando TODAS as chaves configuradas falharem.
@@ -82,8 +94,20 @@ class GroqClient:
                 ultimo_erro = e
                 continue
 
-        # Todas as chaves falharam: encapsula o último erro em RuntimeError para as rotas
-        raise RuntimeError(f"Falha na comunicação com a API da IA: {str(ultimo_erro)}")
+        # Todas as chaves falharam: exceção de domínio (HTTP 502 pelo exception handler global)
+        raise ServicoIAIndisponivelError(f"Falha na comunicação com a API da IA: {str(ultimo_erro)}")
+
+    @staticmethod
+    def _validar_resposta(conteudo_json_str: str, schema: Type[SchemaT]) -> SchemaT:
+        """Valida o JSON devolvido pela IA no schema interno do caso de uso.
+        JSON truncado, campo faltando ou nota fora da rubrica viram RespostaIAInvalidaError (502),
+        em vez de estourar um ValidationError cru (500) no meio do controller."""
+        try:
+            return schema.model_validate_json(conteudo_json_str)
+        except ValidationError as e:
+            raise RespostaIAInvalidaError(
+                f"A IA retornou uma resposta fora do formato esperado: {e.error_count()} campo(s) inválido(s)."
+            )
 
     # --- Métodos Públicos (Casos de Uso) ---
 
@@ -97,7 +121,7 @@ class GroqClient:
         conteudo_json_str = self._enviar_prompt(prompt, response_format="json_object")
         
         # 3. Converte a string JSON recebida diretamente para o schema Pydantic garantindo tipagem e validação dos campos
-        return IAResumoInternal.model_validate_json(conteudo_json_str)
+        return self._validar_resposta(conteudo_json_str, IAResumoInternal)
 
     def adaptar_material(
         self,
@@ -119,7 +143,7 @@ class GroqClient:
 
         # 3. Converte a string JSON recebida diretamente para o schema Pydantic garantindo
         # que as listas contenham apenas strings estritas (StrictStr)
-        return IAAdaptacaoInternal.model_validate_json(conteudo_json_str)
+        return self._validar_resposta(conteudo_json_str, IAAdaptacaoInternal)
 
     def gerar_tutoria_aluno(
         self, 
@@ -182,63 +206,26 @@ Responda EXCLUSIVAMENTE em formato JSON válido, respeitando rigorosamente a seg
 }}
 """
 
-        try:
-            # Usa o canal central (_enviar_prompt): mesmo modelo/JSON de antes e com
-            # fallback automático para a chave reserva (GROQ_API_KEY_B) em caso de falha.
-            conteudo = self._enviar_prompt(prompt)
-            return IATutorAlunoInternal.model_validate_json(conteudo)
-        except Exception as e:
-            raise RuntimeError(f"Falha ao gerar tutoria com a IA: {str(e)}")
+        # Usa o canal central (_enviar_prompt): mesmo modelo/JSON de antes e com
+        # fallback automático para a chave reserva (GROQ_API_KEY_B) em caso de falha.
+        conteudo = self._enviar_prompt(prompt)
+        return self._validar_resposta(conteudo, IATutorAlunoInternal)
 
     def avaliar_acessibilidade(self, texto_material: str) -> IAAcessibilidadeInternal:
+        """Avalia a acessibilidade de um material didático segundo a rubrica DUA da SAEI.
+
+        O prompt fica na estratégia dedicada (avaliacao_strategies): rubrica fixa de 4
+        critérios, diretrizes institucionais e exigência de evidência por nota.
+        A inferência usa temperature=0 para que o mesmo material receba a mesma avaliação
+        e um limite de tokens folgado, evitando JSON truncado.
         """
-        Avalia a acessibilidade geral de um material didático com base no Desenho Universal 
-        para a Aprendizagem (DUA) e devolve o feedback estruturado com score de 0 a 100.
-        """
-        prompt = f"""
-Você é um especialista em Desenho Universal para a Aprendizagem (DUA) e acessibilidade pedagógica.
-Sua missão é analisar o texto do material didático fornecido e avaliar seu nível de acessibilidade geral (sem depender de laudos específicos).
-
----
-MATERIAL DIDÁTICO PARA ANÁLISE:
-\"\"\"
-{texto_material}
-\"\"\"
-
----
-DIRETRIZES DE AVALIAÇÃO DUA:
-1. 'score_acessibilidade': Atribua uma pontuação global de 0 a 100 com base na clareza, organização visual e objetividade do texto.
-2. 'pontos_positivos': Destaque de 2 a 4 pontos fortes do material (ex.: uso de tópicos, parágrafos curtos, linguagem direta). Se não houver pontos positivos claros, retorne pelo menos um item explicitando isso (ex: "Nenhum ponto positivo de acessibilidade relevante identificado").
-3. 'pontos_de_melhoria': Apresente de 1 a 3 pontos que podem ser aprimorados para tornar o texto mais inclusivo. Se o texto já for perfeitamente acessível, retorne um item indicando isso (ex: "Texto já apresenta excelente estrutura DUA").
-4. 'sugestao_imediata': Forneça uma dica prática e acionável de ouro para o professor aplicar e melhorar o texto imediatamente.
-
----
-CONTRATO DE RESPOSTA OBRIGATÓRIO:
-Sua resposta DEVE ser um objeto JSON cru (raw JSON).
-NÃO use blocos de código Markdown (NUNCA utilize ```json ou ```).
-NÃO inclua introdução, saudações, explicações ou texto antes/depois do JSON.
-
-Estrutura exata exigida:
-{{
-    "score_acessibilidade": 85,
-    "pontos_positivos": [
-        "Linguagem direta e objetiva",
-        "Uso adequado de parágrafos curtos"
-    ],
-    "pontos_de_melhoria": [
-        "Uso de termos técnicos sem explicação prévia"
-    ],
-    "sugestao_imediata": "Adicione um pequeno glossário no início para esclarecer os termos técnicos."
-}}
-
-REGRAS RÍGIDAS DE VALIDAÇÃO:
-- O campo 'score_acessibilidade' DEVE ser estritamente um NÚMERO INTEIRO (ex: 85). NUNCA envie porcentagens (85%), strings ("85") ou frações ("85/100").
-- As listas 'pontos_positivos' e 'pontos_de_melhoria' devem conter frases do tipo string e NUNCA devem vir como listas vazias [].
-"""
+        prompt = AvaliacaoAcessibilidadeStrategy().gerar_prompt(texto_material)
 
         conteudo_json_str = self._enviar_prompt(
-            prompt, 
+            prompt,
             response_format="json_object",
-            max_tokens=500
+            max_tokens=2000,
+            temperature=0
         )
-        return IAAcessibilidadeInternal.model_validate_json(conteudo_json_str)
+        # O score final é somado das quatro dimensões dentro do schema, não informado pela IA.
+        return self._validar_resposta(conteudo_json_str, IAAcessibilidadeInternal)

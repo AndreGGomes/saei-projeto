@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
+
 from app.models import Usuario, UserRole
 from app.core.exceptions import PermissaoNegadaError
 from app.api.dependencies import get_current_user, get_documento_service
@@ -14,6 +15,9 @@ from app.schemas.ia_schemas import (
     IAAcessibilidadeInternal,
 )
 
+# Nenhuma rota daqui captura exceção: o controller só valida permissão e delega.
+# Falhas de dados, de permissão e de IA são exceções de domínio traduzidas para
+# HTTP exclusivamente por app/api/exception_handlers.py (400, 403, 404 e 502).
 router = APIRouter(prefix="/ia", tags=["Inteligência Artificial"])
 
 # Endpoint que recebe o payload JSON direto
@@ -30,32 +34,28 @@ def tutor_estudos_personalizado(
     # apenas ALUNO
     if current_user.role != UserRole.ALUNO:
         raise PermissaoNegadaError("O Tutor de Estudos Personalizado é um recurso exclusivo para estudantes.")
-    try:
-        ia_client = GroqClient()
-        # chama a Groq
-        resposta_ia = ia_client.gerar_tutoria_aluno(
-            texto_atividade=dados.texto_atividade,
-            resumo_laudo=dados.resumo_laudo or "Nenhum laudo informado.",
-            preferencias_aluno=dados.preferencias_aluno or "Nenhuma preferência informada."
-        )
 
-        # extrai os termos_busca_duckduckgo e busca links reais no DuckDuckGo
-        links_reais = buscar_links_detalhados_por_termos(
-            termos=resposta_ia.termos_busca_duckduckgo,
-            resumo_laudo=dados.resumo_laudo or "",
-            preferencias_aluno=dados.preferencias_aluno or ""
-        )
+    ia_client = GroqClient()
+    # chama a Groq
+    resposta_ia = ia_client.gerar_tutoria_aluno(
+        texto_atividade=dados.texto_atividade,
+        resumo_laudo=dados.resumo_laudo or "Nenhum laudo informado.",
+        preferencias_aluno=dados.preferencias_aluno or "Nenhuma preferência informada."
+    )
 
-        # Monta o TutorAlunoResponse
-        return TutorAlunoResponse(
-            explicacao_pedagogica=resposta_ia.explicacao_pedagogica,
-            passo_a_passo_resolucao=resposta_ia.passo_a_passo_resolucao,
-            links_recomendados=links_reais
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except RuntimeError as e:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
+    # extrai os termos_busca_duckduckgo e busca links reais no DuckDuckGo
+    links_reais = buscar_links_detalhados_por_termos(
+        termos=resposta_ia.termos_busca_duckduckgo,
+        resumo_laudo=dados.resumo_laudo or "",
+        preferencias_aluno=dados.preferencias_aluno or ""
+    )
+
+    # Monta o TutorAlunoResponse
+    return TutorAlunoResponse(
+        explicacao_pedagogica=resposta_ia.explicacao_pedagogica,
+        passo_a_passo_resolucao=resposta_ia.passo_a_passo_resolucao,
+        links_recomendados=links_reais
+    )
 
 
 # Endpoint integrado para o botão "Estudar com o Tutor" num PDF de Atividade do Aluno
@@ -70,12 +70,7 @@ def tutor_estudos_por_documento(
     service: DocumentoService = Depends(get_documento_service),
     current_user: Usuario = Depends(get_current_user)
 ):
-    try:
-        return service.gerar_tutoria_documento(documento_id, current_user)
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except RuntimeError as e:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
+    return service.gerar_tutoria_documento(documento_id, current_user)
 
 
 # Adaptação Inteligente de Materiais a partir do texto enviado pelo cliente
@@ -93,17 +88,13 @@ def adaptar_material(
     # Apenas PROFESSOR e COORDENADOR: o resultado é um guia de mediação, não um material para o aluno
     if current_user.role not in (UserRole.PROFESSOR, UserRole.COORDENADOR):
         raise PermissaoNegadaError("A adaptação de materiais é exclusiva para professores e coordenadores.")
-    try:
-        ia_client = GroqClient()
-        return ia_client.adaptar_material(
-            texto_material=dados.texto_material,
-            tipo_documento=dados.tipo_documento,
-            resumo_laudo=dados.resumo_laudo or "Nenhum laudo informado."
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except RuntimeError as e:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
+
+    ia_client = GroqClient()
+    return ia_client.adaptar_material(
+        texto_material=dados.texto_material,
+        tipo_documento=dados.tipo_documento,
+        resumo_laudo=dados.resumo_laudo or "Nenhum laudo informado."
+    )
 
 
 # Endpoint integrado para o botão "Adaptar Material" num PDF de Plano de Aula/Atividade
@@ -119,12 +110,7 @@ def adaptar_material_documento(
     service: DocumentoService = Depends(get_documento_service),
     current_user: Usuario = Depends(get_current_user)
 ):
-    try:
-        return service.gerar_adaptacao_documento(documento_id, current_user)
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except RuntimeError as e:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
+    return service.gerar_adaptacao_documento(documento_id, current_user)
 
 
 # Termômetro de Acessibilidade DUA (Foco no Professor e Coordenador)
@@ -141,14 +127,10 @@ def avaliar_acessibilidade(
     # Permissão restrita a PROFESSOR e COORDENADOR
     if current_user.role not in (UserRole.PROFESSOR, UserRole.COORDENADOR):
         raise PermissaoNegadaError("A avaliação de acessibilidade é exclusiva para professores e coordenadores.")
-    
-    try:
-        ia_client = GroqClient()
-        return ia_client.avaliar_acessibilidade(texto_material=dados.texto_material)
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except RuntimeError as e:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
+
+    ia_client = GroqClient()
+    return ia_client.avaliar_acessibilidade(texto_material=dados.texto_material)
+
 
 # Endpoint integrado para o botão "Termômetro DUA" num PDF de Atividade/Plano de Aula
 @router.post(
@@ -162,9 +144,4 @@ def avaliar_acessibilidade_documento(
     service: DocumentoService = Depends(get_documento_service),
     current_user: Usuario = Depends(get_current_user)
 ):
-    try:
-        return service.gerar_avaliacao_acessibilidade_documento(documento_id, current_user)
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except RuntimeError as e:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
+    return service.gerar_avaliacao_acessibilidade_documento(documento_id, current_user)

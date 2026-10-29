@@ -9,7 +9,8 @@ from app.core.exceptions import (
     CredenciaisInvalidasError, UsuarioNaoEncontradoError,
     PermissaoNegadaError, VinculoJaExistenteError,
     RecursoNaoEncontradoError, CodigoDisciplinaJaExisteError,
-    TurmaNaoEncontradaError, DisciplinaNaoEncontradaError
+    TurmaNaoEncontradaError, DisciplinaNaoEncontradaError,
+    DadosInvalidosError, ServicoIAIndisponivelError, RespostaIAInvalidaError
 )
 
 # Função que acopla todos os interceptadores de erro dentro da aplicação FastAPI.
@@ -22,6 +23,7 @@ def registrar_handlers_de_excecao(app: FastAPI):
     @app.exception_handler(MultiplasContasError)
     @app.exception_handler(VinculoJaExistenteError)
     @app.exception_handler(CodigoDisciplinaJaExisteError)
+    @app.exception_handler(DadosInvalidosError)
     async def bad_request_handler(request: Request, exc: Exception):
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -58,3 +60,14 @@ def registrar_handlers_de_excecao(app: FastAPI):
                 content={"detail": str(exc)},
                 headers={"WWW-Authenticate": "Bearer"},
             )
+
+    # Erro 502 (Bad Gateway): falhas do provedor de IA e respostas fora do contrato.
+    # Ficam aqui para que nenhum router precise de try/except: o service lança a exceção
+    # de domínio e a tradução para HTTP acontece só neste ponto.
+    @app.exception_handler(ServicoIAIndisponivelError)
+    @app.exception_handler(RespostaIAInvalidaError)
+    async def bad_gateway_handler(request: Request, exc: Exception):
+        return JSONResponse(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            content={"detail": str(exc)},
+        )
