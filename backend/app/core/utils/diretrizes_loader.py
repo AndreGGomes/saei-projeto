@@ -32,3 +32,13 @@ def obter_diretrizes_inclusao() -> dict:
     except json.JSONDecodeError:
         print(f"Erro: O arquivo {caminho_arquivo} está corrompido ou não é um JSON válido.")
         return {}
+
+
+# Serializa as diretrizes no formato de lista que os prompts da IA esperam.
+# Centralizado aqui para que adaptação de materiais e Termômetro DUA leiam a MESMA base
+# normativa, sem cada prompt inventar a sua própria lista de critérios.
+def formatar_diretrizes_para_prompt() -> str:
+    diretrizes = obter_diretrizes_inclusao()
+    if not diretrizes:
+        return "Nenhuma diretriz institucional disponível."
+    return "\n".join(f"- {chave}: {texto}" for chave, texto in diretrizes.items())

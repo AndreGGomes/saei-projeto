@@ -4,6 +4,8 @@
 
 import PyPDF2
 
+from app.core.exceptions import DadosInvalidosError
+
 class PDFExtractor:
     @staticmethod
     def extrair_texto(caminho_arquivo: str) -> str:
@@ -24,5 +26,6 @@ class PDFExtractor:
             return texto_extraido.strip()
 
         except Exception as e:
-            # Se o arquivo estiver corrompido ou o caminho for inválido, lança erro legível
-            raise ValueError(f"Falha ao ler o arquivo PDF: {str(e)}")
+            # Se o arquivo estiver corrompido ou o caminho for inválido, lança erro de domínio
+            # (traduzido para HTTP 400 pelo exception handler global).
+            raise DadosInvalidosError(f"Falha ao ler o arquivo PDF: {str(e)}")

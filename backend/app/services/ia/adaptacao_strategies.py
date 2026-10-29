@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from app.models import TipoDocumento
-from app.core.utils.diretrizes_loader import obter_diretrizes_inclusao
+from app.core.utils.diretrizes_loader import formatar_diretrizes_para_prompt
 
 class BaseAdaptacaoStrategy(ABC):
 
@@ -30,11 +30,7 @@ class BaseAdaptacaoStrategy(ABC):
         """
 
     def _obter_diretrizes_institucionais(self) -> str:
-        diretrizes = obter_diretrizes_inclusao()
-        if not diretrizes:
-            return "Nenhuma diretriz institucional disponível."
-        linhas = [f"- {chave}: {texto}" for chave, texto in diretrizes.items()]
-        return "\n".join(linhas)
+        return formatar_diretrizes_para_prompt()
 
     def montar_prompt(self, texto_material: str, resumo_laudo: str) -> str:
         return f"""Você é um especialista em pedagogia inclusiva e Desenho Universal de Aprendizagem (DUA).

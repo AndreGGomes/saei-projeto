@@ -1,7 +1,7 @@
 # Guichê de Gestão de Documentos e Anexos. 
 # Permite o envio, a consulta dividida em listas (aluno/professor) e o download de laudos médicos, atividades adaptadas e planos de aula.
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
+from fastapi import APIRouter, Depends, UploadFile, File, Form, status
 from fastapi.responses import FileResponse
 
 from app.models import Usuario, TipoDocumento
@@ -106,11 +106,6 @@ def gerar_resumo_ia(
     service: DocumentoService = Depends(get_documento_service),
     usuario_logado: Usuario = Depends(get_current_user)
 ):
-    try:
-        # Erros de permissão ou documento não encontrado serão interceptados
-        # automaticamente pelo app.exception_handler global (403 e 404).
-        return service.gerar_resumo(documento_id, usuario_logado)
-        
-    except RuntimeError as e:
-        # Tratamos apenas falhas específicas do serviço externo (IA fora do ar, falha de processamento)
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
+    # Permissionamento (403/404), PDF inválido (400) e falha da IA (502) são exceções de
+    # domínio traduzidas pelo app.exception_handler global — nada de try/except aqui.
+    return service.gerar_resumo(documento_id, usuario_logado)
