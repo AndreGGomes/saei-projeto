@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import { documentos as acoesDocumentos, matriculas as acoesMatriculas } from '../actions';
 import useTheme from '../hooks/useTheme';
 import ThemeToggle from '../components/ThemeToggle';
 import { baixarDocumento } from '../utils/documentos';
@@ -29,6 +29,10 @@ export default function DashboardAluno() {
   const [loading, setLoading] = useState(true);
   // Começa em true: a primeira carga acontece logo no mount, sem setState síncrono no efeito
   const [loadingDocs, setLoadingDocs] = useState(true);
+  // Contador que força recarregar os anexos da MESMA matrícula. Sem ele, pedir de novo
+  // a matrícula já selecionada não mudava nenhuma dependência do efeito de carga e a
+  // tela ficava em "Carregando anexos da disciplina..." para sempre.
+  const [versaoDocs, setVersaoDocs] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [erro, setErro] = useState('');
   const { isDarkMode, setTheme } = useTheme();
@@ -52,11 +56,9 @@ export default function DashboardAluno() {
   // Cadeia de promises (e não async/await) para o react-hooks/set-state-in-effect
   // não tratar os setStates como sincronos dentro do efeito de mount.
   const carregarMinhasMatriculas = useCallback(() => {
-    return api
-      .get('/matriculas/minhas-matriculas-aluno')
-      .then((res) => {
-        const lista = res.data || [];
-
+    return acoesMatriculas
+      .minhasMatriculasDoAluno()
+      .then((lista) => {
         const userSalvo = localStorage.getItem('user');
         if (userSalvo) {
           setUsuario(JSON.parse(userSalvo));
@@ -76,12 +78,12 @@ export default function DashboardAluno() {
       })
       .catch((err) => {
         console.error('Erro ao carregar matrículas do aluno:', err);
-        if (err.response?.status === 401 || err.response?.status === 403) {
+        if (err.status === 401 || err.status === 403) {
           alert('Sessão expirada ou não autorizada. Faça login novamente.');
           encerrarSessao(navigate);
           return;
         }
-        setErro('Não foi possível carregar suas disciplinas.');
+        setErro(err.message);
       })
       .finally(() => {
         setLoading(false);
@@ -96,28 +98,30 @@ export default function DashboardAluno() {
   // setLoadingDocs(true) acontece nos handlers de seleção; aqui só gravamos o resultado.
   const carregarDocumentosDaMatricula = useCallback((matriculaId) => {
     if (!matriculaId) return Promise.resolve();
-    return api
-      .get(`/documentos/matricula/${matriculaId}`)
-      .then((res) => {
-        setDocumentosMatricula({
-          enviados_pelo_aluno: res.data.enviados_pelo_aluno || [],
-          enviados_pelo_professor: res.data.enviados_pelo_professor || [],
-        });
+    return acoesDocumentos
+      .listarDocumentosDaMatricula(matriculaId)
+      .then((lista) => {
+        setDocumentosMatricula(lista);
       })
       .catch((err) => {
         console.error('Erro ao buscar documentos da matrícula:', err);
-        alert(err.response?.data?.detail || 'Erro ao carregar os anexos desta disciplina.');
+        alert(err.message || 'Erro ao carregar os anexos desta disciplina.');
       })
       .finally(() => {
         setLoadingDocs(false);
       });
   }, []);
 
+  // A dependência é o id (primitivo), não o objeto da matrícula: quando o handler
+  // seleciona a matrícula que já estava selecionada, o React descarta a atualização por
+  // ser a mesma referência, e antes isso deixava o estado de carregamento travado em true.
+  const matriculaSelecionadaId = matriculaSelecionada?.id;
+
   useEffect(() => {
-    if (matriculaSelecionada) {
-      carregarDocumentosDaMatricula(matriculaSelecionada.id);
+    if (matriculaSelecionadaId) {
+      carregarDocumentosDaMatricula(matriculaSelecionadaId);
     }
-  }, [matriculaSelecionada, carregarDocumentosDaMatricula]);
+  }, [matriculaSelecionadaId, versaoDocs, carregarDocumentosDaMatricula]);
 
   // 3. UPLOAD DE DOCUMENTO PARA O PROFESSOR (POST /documentos/upload/{matricula_id})
   const handleUploadDocumento = async (e) => {
@@ -133,13 +137,10 @@ export default function DashboardAluno() {
 
     try {
       setUploading(true);
-      const formData = new FormData();
-      formData.append('titulo', uploadForm.titulo.trim());
-      formData.append('tipo', uploadForm.tipo);
-      formData.append('arquivo', uploadForm.arquivo);
-
-      await api.post(`/documentos/upload/${matriculaSelecionada.id}`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      await acoesDocumentos.enviarDocumento(matriculaSelecionada.id, {
+        titulo: uploadForm.titulo.trim(),
+        tipo: uploadForm.tipo,
+        arquivo: uploadForm.arquivo,
       });
 
       alert('Documento enviado ao professor com sucesso!');
@@ -151,7 +152,7 @@ export default function DashboardAluno() {
       carregarDocumentosDaMatricula(matriculaSelecionada.id);
     } catch (err) {
       console.error('Erro no upload:', err);
-      alert(err.response?.data?.detail || 'Falha ao realizar upload.');
+      alert(err.message || 'Falha ao realizar upload.');
     } finally {
       setUploading(false);
     }
@@ -163,13 +164,13 @@ export default function DashboardAluno() {
   const handleDeletarDocumento = async (docId) => {
     if (!confirm('Deseja realmente excluir este documento?')) return;
     try {
-      await api.delete(`/documentos/${docId}`);
+      await acoesDocumentos.excluirDocumento(docId);
       alert('Documento excluído com sucesso.');
       setLoadingDocs(true);
       carregarDocumentosDaMatricula(matriculaSelecionada.id);
     } catch (err) {
       console.error('Erro ao deletar documento:', err);
-      alert(err.response?.data?.detail || 'Erro ao excluir o documento.');
+      alert(err.message || 'Erro ao excluir o documento.');
     }
   };
 
@@ -182,32 +183,42 @@ export default function DashboardAluno() {
   const salvarPreferencia = async (matriculaId) => {
     try {
       setSalvandoPref(matriculaId);
-      const res = await api.patch(`/matriculas/${matriculaId}/preferencias`, {
-        preferencias_do_aluno: preferencias[matriculaId] ?? '',
-      });
+      const matricula = await acoesMatriculas.atualizarPreferencias(
+        matriculaId,
+        preferencias[matriculaId]
+      );
 
       // O backend devolve a matrícula completa: mantém listas e rascunho em sincronia
-      setMatriculas((prev) => prev.map((m) => (m.id === matriculaId ? res.data : m)));
-      setPreferencias((prev) => ({ ...prev, [matriculaId]: res.data.preferencias_do_aluno || '' }));
+      setMatriculas((prev) => prev.map((m) => (m.id === matriculaId ? matricula : m)));
+      setPreferencias((prev) => ({ ...prev, [matriculaId]: matricula.preferencias_do_aluno || '' }));
       setPrefSalva(matriculaId);
     } catch (err) {
       console.error('Erro ao salvar preferências:', err);
-      alert(err.response?.data?.detail || 'Erro ao salvar suas preferências.');
+      alert(err.message || 'Erro ao salvar suas preferências.');
     } finally {
       setSalvandoPref(null);
     }
   };
 
   // 6. Seleção e navegação (setLoadingDocs(true) aqui: é handler, não efeito)
-  const selecionarMatriculaPorId = (matriculaId) => {
-    const sel = matriculas.find((m) => m.id === matriculaId);
+  // Ponto único de abertura dos anexos de uma matrícula: liga o loading e garante que
+  // a carga aconteça tanto ao trocar de disciplina quanto ao repetir a mesma.
+  const abrirDocumentosDaMatricula = (matricula) => {
+    if (!matricula) return;
     setLoadingDocs(true);
-    setMatriculaSelecionada(sel);
+    if (matriculaSelecionada?.id === matricula.id) {
+      setVersaoDocs((versao) => versao + 1);
+    } else {
+      setMatriculaSelecionada(matricula);
+    }
+  };
+
+  const selecionarMatriculaPorId = (matriculaId) => {
+    abrirDocumentosDaMatricula(matriculas.find((m) => m.id === matriculaId));
   };
 
   const verDocumentosDaMatricula = (m) => {
-    setLoadingDocs(true);
-    setMatriculaSelecionada(m);
+    abrirDocumentosDaMatricula(m);
     setActiveTab('documentos');
   };
 

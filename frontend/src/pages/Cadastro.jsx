@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import { auth } from '../actions';
 import useTheme from '../hooks/useTheme';
 import ThemeToggle from '../components/ThemeToggle';
 
@@ -44,38 +44,26 @@ export default function Cadastro() {
     setLoading(true);
 
     try {
-      if (formData.role === 'ALUNO') {
-        if (!formData.matricula.trim()) {
-          setErro('A matrícula é obrigatória para alunos.');
-          setLoading(false);
-          return;
-        }
-        await api.post('/auth/register/aluno', {
-          nome: formData.nome,
-          email: formData.email,
-          senha: formData.senha,
-          matricula: formData.matricula.trim(),
-        });
-      } else if (formData.role === 'PROFESSOR') {
-        await api.post('/auth/register/professor', {
-          nome: formData.nome,
-          email: formData.email,
-          senha: formData.senha,
-        });
-      } else if (formData.role === 'COORDENADOR') {
-        await api.post('/auth/register/coordenador', {
-          nome: formData.nome,
-          email: formData.email,
-          senha: formData.senha,
-        });
+      if (formData.role === 'ALUNO' && !formData.matricula.trim()) {
+        setErro('A matrícula é obrigatória para alunos.');
+        setLoading(false);
+        return;
       }
+
+      // A action escolhe o endpoint de cadastro conforme o papel escolhido
+      await auth.registrar({
+        papel: formData.role,
+        nome: formData.nome,
+        email: formData.email,
+        senha: formData.senha,
+        matricula: formData.matricula.trim(),
+      });
 
       alert('Cadastro realizado com sucesso! Faça login.');
       navigate('/login');
     } catch (err) {
       console.error(err);
-      const msg = err.response?.data?.detail || 'Falha ao registrar usuário.';
-      setErro(msg);
+      setErro(err.message);
     } finally {
       setLoading(false);
     }

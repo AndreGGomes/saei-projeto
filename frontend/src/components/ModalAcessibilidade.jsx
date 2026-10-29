@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import api from '../services/api';
+import { ia } from '../actions';
 import TermometroAcessibilidade from './TermometroAcessibilidade';
 
 // Modal do Termômetro de Acessibilidade DUA (Visão do Professor e Coordenador).
@@ -20,18 +20,15 @@ export default function ModalAcessibilidade({ documento, onFechar }) {
 
     let ativo = true;
 
-    api
-      .post(`/ia/avaliar-acessibilidade/documento/${documento.id}`)
-      .then((res) => {
-        if (ativo) setResultado(res.data);
+    ia
+      .avaliarAcessibilidadeDocumento(documento.id)
+      .then((dados) => {
+        if (ativo) setResultado(dados);
       })
       .catch((err) => {
         if (!ativo) return;
         setResultado(null);
-        setErro(
-          err.response?.data?.detail ||
-            'Não foi possível analisar a acessibilidade agora. Tente novamente em instantes.'
-        );
+        setErro(err.message);
       })
       .finally(() => {
         if (ativo) setCarregando(false);
@@ -76,12 +73,12 @@ export default function ModalAcessibilidade({ documento, onFechar }) {
     setErro('');
     setResultado(null);
 
-    api
-      .post('/ia/avaliar-acessibilidade', { texto_material: textoMaterial })
-      .then((res) => setResultado(res.data))
+    ia
+      .avaliarAcessibilidadeTexto(textoMaterial)
+      .then((dados) => setResultado(dados))
       .catch((err) => {
         setResultado(null);
-        setErro(err.response?.data?.detail || 'Erro ao comunicar com o serviço de IA.');
+        setErro(err.message);
       })
       .finally(() => setCarregando(false));
   };

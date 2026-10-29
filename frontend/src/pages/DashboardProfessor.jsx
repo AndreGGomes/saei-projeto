@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import { documentos as acoesDocumentos, matriculas as acoesMatriculas } from '../actions';
 import useTheme from '../hooks/useTheme';
 import ThemeToggle from '../components/ThemeToggle';
 import { baixarDocumento } from '../utils/documentos';
@@ -53,8 +53,7 @@ export default function DashboardProfessor() {
         setUsuario(JSON.parse(userSalvo));
       }
 
-      const res = await api.get('/matriculas/minhas-matriculas-professor');
-      const lista = res.data.matriculas || [];
+      const lista = await acoesMatriculas.minhasMatriculasDoProfessor();
       setMatriculas(lista);
 
       if (lista.length > 0 && !matriculaSelecionada) {
@@ -62,12 +61,12 @@ export default function DashboardProfessor() {
       }
     } catch (err) {
       console.error('Erro ao carregar matrículas do professor:', err);
-      if (err.response?.status === 401 || err.response?.status === 403) {
+      if (err.status === 401 || err.status === 403) {
         alert('Sessão expirada ou não autorizada. Faça login novamente.');
         handleLogout();
         return;
       }
-      setErro('Não foi possível carregar suas turmas e alunos.');
+      setErro(err.message || 'Não foi possível carregar suas turmas e alunos.');
     } finally {
       setLoading(false);
     }
@@ -82,14 +81,10 @@ export default function DashboardProfessor() {
     if (!matriculaId) return;
     try {
       setLoadingDocs(true);
-      const res = await api.get(`/documentos/matricula/${matriculaId}`);
-      setDocumentosMatricula({
-        enviados_pelo_aluno: res.data.enviados_pelo_aluno || [],
-        enviados_pelo_professor: res.data.enviados_pelo_professor || [],
-      });
+      setDocumentosMatricula(await acoesDocumentos.listarDocumentosDaMatricula(matriculaId));
     } catch (err) {
       console.error('Erro ao buscar documentos da matrícula:', err);
-      alert(err.response?.data?.detail || 'Erro ao carregar anexos desta matrícula.');
+      alert(err.message || 'Erro ao carregar anexos desta matrícula.');
     } finally {
       setLoadingDocs(false);
     }
@@ -115,13 +110,10 @@ export default function DashboardProfessor() {
 
     try {
       setUploading(true);
-      const formData = new FormData();
-      formData.append('titulo', uploadForm.titulo.trim());
-      formData.append('tipo', uploadForm.tipo);
-      formData.append('arquivo', uploadForm.arquivo);
-
-      await api.post(`/documentos/upload/${matriculaSelecionada.id}`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      await acoesDocumentos.enviarDocumento(matriculaSelecionada.id, {
+        titulo: uploadForm.titulo.trim(),
+        tipo: uploadForm.tipo,
+        arquivo: uploadForm.arquivo,
       });
 
       alert('Documento enviado com sucesso!');
@@ -132,7 +124,7 @@ export default function DashboardProfessor() {
       carregarDocumentosDaMatricula(matriculaSelecionada.id);
     } catch (err) {
       console.error('Erro no upload:', err);
-      alert(err.response?.data?.detail || 'Falha ao realizar upload.');
+      alert(err.message || 'Falha ao realizar upload.');
     } finally {
       setUploading(false);
     }
@@ -144,12 +136,12 @@ export default function DashboardProfessor() {
   const handleDeletarDocumento = async (docId) => {
     if (!confirm('Deseja realmente excluir este documento?')) return;
     try {
-      await api.delete(`/documentos/${docId}`);
+      await acoesDocumentos.excluirDocumento(docId);
       alert('Documento excluído com sucesso.');
       carregarDocumentosDaMatricula(matriculaSelecionada.id);
     } catch (err) {
       console.error('Erro ao deletar documento:', err);
-      alert(err.response?.data?.detail || 'Erro ao excluir o documento.');
+      alert(err.message || 'Erro ao excluir o documento.');
     }
   };
 

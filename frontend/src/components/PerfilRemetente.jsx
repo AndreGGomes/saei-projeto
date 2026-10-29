@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import api from '../services/api';
+import { auth } from '../actions';
 import Popover from './Popover';
 
 const PAPEIS = {
@@ -28,8 +28,7 @@ export default function PerfilRemetente({ remetente, className = '' }) {
 
     setCarregando(true);
     try {
-      const res = await api.get(`/auth/${remetente.id}`);
-      setPerfil(res.data);
+      setPerfil(await auth.buscarPerfil(remetente.id));
     } catch (err) {
       console.error('Erro ao buscar perfil do remetente:', err);
       setPerfil(null);

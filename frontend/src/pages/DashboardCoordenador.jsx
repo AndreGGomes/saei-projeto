@@ -1,6 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import {
+  auth,
+  coordenador as acoesCoordenador,
+  disciplinas as acoesDisciplinas,
+  documentos as acoesDocumentos,
+  matriculas as acoesMatriculas,
+} from '../actions';
 import useTheme from '../hooks/useTheme';
 import ThemeToggle from '../components/ThemeToggle';
 import { baixarDocumento } from '../utils/documentos';
@@ -61,25 +67,26 @@ export default function DashboardCoordenador() {
       setLoading(true);
       setErro('');
 
-      const [resDisciplinas, resProfessores, resMatriculas, resTutorados] = await Promise.all([
-        api.get('/disciplinas/'),
-        api.get('/auth/professores'),
-        api.get('/matriculas/'),
-        api.get('/coordenador/meus-vinculos'),
-      ]);
+      const [listaDisciplinas, listaProfessores, listaMatriculas, listaTutorados] =
+        await Promise.all([
+          acoesDisciplinas.listarDisciplinas(),
+          auth.listarProfessores(),
+          acoesMatriculas.listarMatriculas(),
+          acoesCoordenador.listarMeusVinculos(),
+        ]);
 
-      setDisciplinas(resDisciplinas.data);
-      setProfessores(resProfessores.data);
-      setMatriculas(resMatriculas.data);
-      setTutorados(resTutorados.data.tutorados || []);
+      setDisciplinas(listaDisciplinas);
+      setProfessores(listaProfessores);
+      setMatriculas(listaMatriculas);
+      setTutorados(listaTutorados);
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
-      if (err.response?.status === 401 || err.response?.status === 403) {
+      if (err.status === 401 || err.status === 403) {
         alert('Sessão expirada ou não autorizada. Faça login novamente.');
         handleLogout();
         return;
       }
-      setErro('Não foi possível carregar os dados do servidor.');
+      setErro(err.message || 'Não foi possível carregar os dados do servidor.');
     } finally {
       setLoading(false);
     }
@@ -94,14 +101,10 @@ export default function DashboardCoordenador() {
     setMatriculaDocsVisualizando(matricula);
     setLoadingDocs(true);
     try {
-      const res = await api.get(`/documentos/matricula/${matricula.id}`);
-      setDocumentosMatricula({
-        enviados_pelo_aluno: res.data.enviados_pelo_aluno || [],
-        enviados_pelo_professor: res.data.enviados_pelo_professor || [],
-      });
+      setDocumentosMatricula(await acoesDocumentos.listarDocumentosDaMatricula(matricula.id));
     } catch (err) {
       console.error('Erro ao buscar documentos:', err);
-      alert(err.response?.data?.detail || 'Erro ao carregar os documentos desta matrícula.');
+      alert(err.message || 'Erro ao carregar os documentos desta matrícula.');
     } finally {
       setLoadingDocs(false);
     }
@@ -113,14 +116,14 @@ export default function DashboardCoordenador() {
   const handleDeletarDocumento = async (docId) => {
     if (!confirm('Como coordenador, tem certeza que deseja excluir este documento permanentemente?')) return;
     try {
-      await api.delete(`/documentos/${docId}`);
+      await acoesDocumentos.excluirDocumento(docId);
       alert('Documento excluído.');
       if (matriculaDocsVisualizando) {
         abrirModalDocumentos(matriculaDocsVisualizando);
       }
     } catch (err) {
       console.error('Erro ao excluir documento:', err);
-      alert(err.response?.data?.detail || 'Erro ao excluir documento.');
+      alert(err.message || 'Erro ao excluir documento.');
     }
   };
 
@@ -128,14 +131,14 @@ export default function DashboardCoordenador() {
   const handleAddDisciplina = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/disciplinas/criar', {
+      await acoesDisciplinas.criarDisciplina({
         nome: novaDisciplina.nome.trim(),
         codigo: novaDisciplina.codigo.trim().toUpperCase(),
       });
       setNovaDisciplina({ nome: '', codigo: '' });
       carregarDadosDoBanco();
     } catch (err) {
-      alert(err.response?.data?.detail || 'Erro ao cadastrar disciplina.');
+      alert(err.message || 'Erro ao cadastrar disciplina.');
     }
   };
 
@@ -144,14 +147,12 @@ export default function DashboardCoordenador() {
     if (!novoNomeDisciplina.trim()) return;
 
     try {
-      await api.patch(`/disciplinas/${disciplinaEditando.codigo}/nome`, {
-        novo_nome: novoNomeDisciplina.trim(),
-      });
+      await acoesDisciplinas.renomearDisciplina(disciplinaEditando.codigo, novoNomeDisciplina.trim());
       setDisciplinaEditando(null);
       setNovoNomeDisciplina('');
       carregarDadosDoBanco();
     } catch (err) {
-      alert(err.response?.data?.detail || 'Erro ao atualizar nome da disciplina.');
+      alert(err.message || 'Erro ao atualizar nome da disciplina.');
     }
   };
 
@@ -161,10 +162,10 @@ export default function DashboardCoordenador() {
     }
 
     try {
-      await api.delete(`/disciplinas/${codigo}`);
+      await acoesDisciplinas.excluirDisciplina(codigo);
       carregarDadosDoBanco();
     } catch (err) {
-      alert(err.response?.data?.detail || 'Erro ao excluir disciplina.');
+      alert(err.message || 'Erro ao excluir disciplina.');
     }
   };
 
@@ -172,39 +173,37 @@ export default function DashboardCoordenador() {
   const handleAddMatricula = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/matriculas/criar', {
-        aluno_matricula: novaMatricula.aluno_matricula.trim(),
-        professor_email: novaMatricula.professor_email,
-        disciplina_codigo: novaMatricula.disciplina_codigo,
+      await acoesMatriculas.criarMatricula({
+        alunoMatricula: novaMatricula.aluno_matricula.trim(),
+        professorEmail: novaMatricula.professor_email,
+        disciplinaCodigo: novaMatricula.disciplina_codigo,
       });
       setNovaMatricula({ aluno_matricula: '', professor_email: '', disciplina_codigo: '' });
       carregarDadosDoBanco();
     } catch (err) {
-      alert(err.response?.data?.detail || 'Erro ao efetivar matrícula.');
+      alert(err.message || 'Erro ao efetivar matrícula.');
     }
   };
 
   const handleMudarProfessor = async (e) => {
     e.preventDefault();
     try {
-      await api.patch(`/matriculas/${matriculaEditando.id}/mudar-professor`, {
-        novo_professor_email: novoProfessorEmail,
-      });
+      await acoesMatriculas.mudarProfessorDaMatricula(matriculaEditando.id, novoProfessorEmail);
       setMatriculaEditando(null);
       setNovoProfessorEmail('');
       carregarDadosDoBanco();
     } catch (err) {
-      alert(err.response?.data?.detail || 'Erro ao mudar professor.');
+      alert(err.message || 'Erro ao mudar professor.');
     }
   };
 
   const handleDeletarMatricula = async (id) => {
     if (!confirm('Deseja realmente cancelar esta matrícula?')) return;
     try {
-      await api.delete(`/matriculas/${id}`);
+      await acoesMatriculas.cancelarMatricula(id);
       carregarDadosDoBanco();
     } catch (err) {
-      alert(err.response?.data?.detail || 'Erro ao cancelar matrícula.');
+      alert(err.message || 'Erro ao cancelar matrícula.');
     }
   };
 
@@ -214,14 +213,12 @@ export default function DashboardCoordenador() {
     if (!matriculaTutorar.trim()) return;
 
     try {
-      await api.post('/aluno/definir-coordenador-tutor', {
-        aluno_matricula: matriculaTutorar.trim(),
-      });
+      await acoesCoordenador.definirCoordenadorTutor(matriculaTutorar.trim());
       alert('Você agora é o tutor responsável por este aluno!');
       setMatriculaTutorar('');
       carregarDadosDoBanco();
     } catch (err) {
-      alert(err.response?.data?.detail || 'Erro ao vincular tutoria.');
+      alert(err.message || 'Erro ao vincular tutoria.');
     }
   };
 
@@ -232,9 +229,9 @@ export default function DashboardCoordenador() {
     setDisciplinaEditando(disc);
     setNovoNomeDisciplina(disc.nome);
     try {
-      const res = await api.get(`/disciplinas/${disc.codigo}`);
-      setDisciplinaEditando(res.data);
-      setNovoNomeDisciplina(res.data.nome);
+      const atual = await acoesDisciplinas.buscarDisciplina(disc.codigo);
+      setDisciplinaEditando(atual);
+      setNovoNomeDisciplina(atual.nome);
     } catch (err) {
       // Sem internet/servidor: o modal segue com os dados da lista (fallback)
       console.error('Erro ao buscar disciplina para edição:', err);
