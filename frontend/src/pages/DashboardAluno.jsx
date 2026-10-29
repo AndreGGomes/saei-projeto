@@ -29,6 +29,10 @@ export default function DashboardAluno() {
   const [loading, setLoading] = useState(true);
   // Começa em true: a primeira carga acontece logo no mount, sem setState síncrono no efeito
   const [loadingDocs, setLoadingDocs] = useState(true);
+  // Contador que força recarregar os anexos da MESMA matrícula. Sem ele, pedir de novo
+  // a matrícula já selecionada não mudava nenhuma dependência do efeito de carga e a
+  // tela ficava em "Carregando anexos da disciplina..." para sempre.
+  const [versaoDocs, setVersaoDocs] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [erro, setErro] = useState('');
   const { isDarkMode, setTheme } = useTheme();
@@ -108,11 +112,16 @@ export default function DashboardAluno() {
       });
   }, []);
 
+  // A dependência é o id (primitivo), não o objeto da matrícula: quando o handler
+  // seleciona a matrícula que já estava selecionada, o React descarta a atualização por
+  // ser a mesma referência, e antes isso deixava o estado de carregamento travado em true.
+  const matriculaSelecionadaId = matriculaSelecionada?.id;
+
   useEffect(() => {
-    if (matriculaSelecionada) {
-      carregarDocumentosDaMatricula(matriculaSelecionada.id);
+    if (matriculaSelecionadaId) {
+      carregarDocumentosDaMatricula(matriculaSelecionadaId);
     }
-  }, [matriculaSelecionada, carregarDocumentosDaMatricula]);
+  }, [matriculaSelecionadaId, versaoDocs, carregarDocumentosDaMatricula]);
 
   // 3. UPLOAD DE DOCUMENTO PARA O PROFESSOR (POST /documentos/upload/{matricula_id})
   const handleUploadDocumento = async (e) => {
@@ -192,15 +201,24 @@ export default function DashboardAluno() {
   };
 
   // 6. Seleção e navegação (setLoadingDocs(true) aqui: é handler, não efeito)
-  const selecionarMatriculaPorId = (matriculaId) => {
-    const sel = matriculas.find((m) => m.id === matriculaId);
+  // Ponto único de abertura dos anexos de uma matrícula: liga o loading e garante que
+  // a carga aconteça tanto ao trocar de disciplina quanto ao repetir a mesma.
+  const abrirDocumentosDaMatricula = (matricula) => {
+    if (!matricula) return;
     setLoadingDocs(true);
-    setMatriculaSelecionada(sel);
+    if (matriculaSelecionada?.id === matricula.id) {
+      setVersaoDocs((versao) => versao + 1);
+    } else {
+      setMatriculaSelecionada(matricula);
+    }
+  };
+
+  const selecionarMatriculaPorId = (matriculaId) => {
+    abrirDocumentosDaMatricula(matriculas.find((m) => m.id === matriculaId));
   };
 
   const verDocumentosDaMatricula = (m) => {
-    setLoadingDocs(true);
-    setMatriculaSelecionada(m);
+    abrirDocumentosDaMatricula(m);
     setActiveTab('documentos');
   };
 
