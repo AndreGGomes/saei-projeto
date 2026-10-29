@@ -3,9 +3,10 @@ import { useEffect, useId, useState } from 'react';
 // Comprimento do arco semicircular do gauge (raio 95 -> meia circunferência)
 const COMPRIMENTO_ARCO = Math.PI * 95;
 
-// Lógica de cores e rótulos baseada no Score DUA (mantida da feature original)
+// Lógica de cores e rótulos baseada no Score DUA.
+// As faixas espelham app/core/rubrica_dua.py no backend: 75+ Alta, 50+ Média, 25+ Baixa.
 const getStatus = (score) => {
-  if (score >= 80) {
+  if (score >= 75) {
     return {
       label: 'Alta acessibilidade (DUA)',
       icon: '🟢',
@@ -21,12 +22,29 @@ const getStatus = (score) => {
       pill: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/60 dark:text-amber-300',
     };
   }
+  if (score >= 25) {
+    return {
+      label: 'Baixa acessibilidade',
+      icon: '🔴',
+      cor: '#f43f5e',
+      pill: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/60 dark:text-rose-300',
+    };
+  }
   return {
-    label: 'Baixa acessibilidade',
+    label: 'Acessibilidade muito baixa',
     icon: '🔴',
     cor: '#f43f5e',
     pill: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/60 dark:text-rose-300',
   };
+};
+
+// Rótulos curtos dos critérios da rubrica do backend, para o professor entender
+// de onde veio cada ponto do termômetro.
+const NOMES_CRITERIOS = {
+  representacao: 'Representação',
+  acao_e_expressao: 'Ação e Expressão',
+  engajamento: 'Engajamento',
+  acessibilidade_do_formato: 'Formato e diretrizes',
 };
 
 export default function TermometroAcessibilidade({ avaliacao }) {
@@ -46,8 +64,10 @@ export default function TermometroAcessibilidade({ avaliacao }) {
 
   if (!avaliacao) return null;
 
-  const { pontos_positivos, pontos_de_melhoria, sugestao_imediata } = avaliacao;
-  const status = getStatus(score);
+  const { pontos_positivos, pontos_de_melhoria, sugestao_imediata, dimensoes } = avaliacao;
+  // O backend já devolve o nível calculado; usamos ele quando existir para que a
+  // legenda nunca divirja do número (antes o texto podia contradizer o score).
+  const status = { ...getStatus(score), label: avaliacao.nivel_acessibilidade || getStatus(score).label };
   const deslocamento = COMPRIMENTO_ARCO * (1 - animado / 100);
 
   return (
@@ -116,6 +136,36 @@ export default function TermometroAcessibilidade({ avaliacao }) {
         </div>
       </div>
 
+      {/* Notas por critério da rubrica DUA */}
+      {dimensoes && dimensoes.length > 0 && (
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {dimensoes.map((dimensao) => (
+            <div
+              key={dimensao.chave}
+              className="rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/40"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                  {NOMES_CRITERIOS[dimensao.chave] || dimensao.chave}
+                </span>
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                  {dimensao.score}/25
+                </span>
+              </div>
+              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${Math.min(100, Math.max(0, (Number(dimensao.score) / 25) * 100))}%`,
+                    backgroundColor: status.cor,
+                  }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Dica imediata de ouro */}
       {sugestao_imediata && (
         <div className="rounded-xl border border-sky-200/80 bg-gradient-to-r from-sky-50 to-indigo-50 p-4 dark:border-sky-900/70 dark:from-sky-950/40 dark:to-indigo-950/40">
@@ -132,32 +182,44 @@ export default function TermometroAcessibilidade({ avaliacao }) {
           <h4 className="mb-2.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
             <span aria-hidden="true">✅</span> Pontos positivos
           </h4>
-          <ul className="space-y-2">
-            {pontos_positivos?.map((ponto, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm leading-relaxed text-emerald-800 dark:text-emerald-200/90">
-                <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[9px] font-bold text-white">
-                  ✓
-                </span>
-                <span>{ponto}</span>
-              </li>
-            ))}
-          </ul>
+          {pontos_positivos?.length ? (
+            <ul className="space-y-2">
+              {pontos_positivos.map((ponto, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm leading-relaxed text-emerald-800 dark:text-emerald-200/90">
+                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[9px] font-bold text-white">
+                    ✓
+                  </span>
+                  <span>{ponto}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm italic text-emerald-700/80 dark:text-emerald-300/70">
+              Nenhuma evidência positiva foi encontrada no texto do material.
+            </p>
+          )}
         </div>
 
         <div className="rounded-xl border border-amber-200/80 bg-amber-50/70 p-4 dark:border-amber-900/70 dark:bg-amber-950/30">
           <h4 className="mb-2.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
             <span aria-hidden="true">⚠️</span> Oportunidades de melhoria
           </h4>
-          <ul className="space-y-2">
-            {pontos_de_melhoria?.map((ponto, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm leading-relaxed text-amber-800 dark:text-amber-200/90">
-                <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-white">
-                  !
-                </span>
-                <span>{ponto}</span>
-              </li>
-            ))}
-          </ul>
+          {pontos_de_melhoria?.length ? (
+            <ul className="space-y-2">
+              {pontos_de_melhoria.map((ponto, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm leading-relaxed text-amber-800 dark:text-amber-200/90">
+                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-white">
+                    !
+                  </span>
+                  <span>{ponto}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm italic text-amber-700/80 dark:text-amber-300/70">
+              Nenhum ajuste obrigatório identificado.
+            </p>
+          )}
         </div>
       </div>
     </div>

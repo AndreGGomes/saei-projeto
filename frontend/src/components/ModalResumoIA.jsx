@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import api from '../services/api';
+import { documentos as acoesDocumentos } from '../actions';
 
 // Modal que gera e exibe o resumo de IA de um documento (POST /documentos/{id}/resumo-ia).
 // Estado único: carregando | erro | resumo. O reset síncrono acontece no handler do clique
-// ("Tentar novamente"); o efeito só chama a API e grava o resultado nos callbacks.
+// ("Tentar novamente"); o efeito só chama a action e grava o resultado no estado.
 export default function ModalResumoIA({ documento, onFechar }) {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
@@ -14,15 +14,15 @@ export default function ModalResumoIA({ documento, onFechar }) {
   useEffect(() => {
     let ativo = true;
 
-    api
-      .post(`/documentos/${documento.id}/resumo-ia`)
-      .then((res) => {
-        if (ativo) setResumo(res.data);
+    acoesDocumentos
+      .gerarResumoIA(documento.id)
+      .then((dados) => {
+        if (ativo) setResumo(dados);
       })
       .catch((err) => {
         if (!ativo) return;
         setResumo(null);
-        setErro(err.response?.data?.detail || 'Não foi possível gerar o resumo agora. Tente novamente em instantes.');
+        setErro(err.message);
       })
       .finally(() => {
         if (ativo) setCarregando(false);

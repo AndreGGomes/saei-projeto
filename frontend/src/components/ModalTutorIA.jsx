@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import api from '../services/api';
+import { ia } from '../actions';
 
 // Modal do Tutor de Estudos Personalizado (Visão do Aluno).
 // Exibe Skeleton/Spinner durante a cadeia Groq -> DuckDuckGo e renderiza:
@@ -13,18 +13,15 @@ export default function ModalTutorIA({ documento, onFechar }) {
   useEffect(() => {
     let ativo = true;
 
-    api
-      .post(`/ia/tutor-aluno/documento/${documento.id}`)
-      .then((res) => {
-        if (ativo) setTutoria(res.data);
+    ia
+      .tutorAlunoDocumento(documento.id)
+      .then((dados) => {
+        if (ativo) setTutoria(dados);
       })
       .catch((err) => {
         if (!ativo) return;
         setTutoria(null);
-        setErro(
-          err.response?.data?.detail ||
-            'Não foi possível conectar ao Tutor Virtual agora. Tente novamente em instantes.'
-        );
+        setErro(err.message);
       })
       .finally(() => {
         if (ativo) setCarregando(false);

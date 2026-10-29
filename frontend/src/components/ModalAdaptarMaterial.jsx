@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import api from '../services/api';
+import { ia } from '../actions';
 
 // Modal da Adaptação Inteligente de Materiais (Visão do Professor e Coordenador).
 // Chama POST /ia/adaptar-material/documento/{id} e renderiza o guia metodológico:
@@ -14,18 +14,15 @@ export default function ModalAdaptarMaterial({ documento, onFechar }) {
   useEffect(() => {
     let ativo = true;
 
-    api
-      .post(`/ia/adaptar-material/documento/${documento.id}`)
-      .then((res) => {
-        if (ativo) setAdaptacao(res.data);
+    ia
+      .adaptarMaterialDocumento(documento.id)
+      .then((dados) => {
+        if (ativo) setAdaptacao(dados);
       })
       .catch((err) => {
         if (!ativo) return;
         setAdaptacao(null);
-        setErro(
-          err.response?.data?.detail ||
-            'Não foi possível adaptar este material agora. Tente novamente em instantes.'
-        );
+        setErro(err.message);
       })
       .finally(() => {
         if (ativo) setCarregando(false);

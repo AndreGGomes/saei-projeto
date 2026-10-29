@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import { auth } from '../actions';
 import useTheme from '../hooks/useTheme';
 import ThemeToggle from '../components/ThemeToggle';
 
@@ -21,38 +21,22 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // O OAuth2 do FastAPI espera os dados no padrão application/x-www-form-urlencoded
-      const params = new URLSearchParams();
-      params.append('username', identificador.trim());
-      params.append('password', password);
-
-      const response = await api.post('/auth/login', params, {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      });
-
-      // Salva o token JWT no navegador
-      const token = response.data.access_token;
-      localStorage.setItem('token', token);
-
-      // Consulta o usuário logado para obter seu papel (role) e matrícula
-      const userRes = await api.get('/auth/me');
-      const user = userRes.data;
-      localStorage.setItem('user', JSON.stringify(user));
+      // A action autentica, guarda token + usuário e devolve o perfil logado
+      const usuario = await auth.entrar(identificador, password);
 
       // Redireciona o usuário para seu respectivo painel
-      if (user.role === 'COORDENADOR') {
+      if (usuario.role === 'COORDENADOR') {
         navigate('/coordenador/dashboard');
-      } else if (user.role === 'PROFESSOR') {
+      } else if (usuario.role === 'PROFESSOR') {
         navigate('/professor/dashboard');
-      } else if (user.role === 'ALUNO') {
+      } else if (usuario.role === 'ALUNO') {
         navigate('/aluno/dashboard');
       } else {
         setErro('Perfil de usuário não reconhecido pelo sistema.');
       }
     } catch (err) {
       console.error('Erro de autenticação:', err);
-      const msg = err.response?.data?.detail || 'Erro ao conectar com o servidor.';
-      setErro(msg);
+      setErro(err.message);
     } finally {
       setLoading(false);
     }
