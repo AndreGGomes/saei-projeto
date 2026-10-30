@@ -1,29 +1,71 @@
-// Aba "Visão Geral" do painel do professor: cartões de indicadores do docente.
+import { Card, CardBody, CardHeader } from '../../ui/Card';
+import StatCard from '../../ui/StatCard';
+import { IconeDocumento, IconeLivro, IconeUsuarios } from '../../ui/icons';
+
+// Visão geral do docente: indicadores e um atalho explicando onde ficam os anexos.
 export default function TabVisaoGeral({ matriculas, disciplinasUnicas }) {
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Painel Geral do Docente</h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-xl shadow border-l-4 border-blue-500 border border-slate-100 dark:border-slate-800">
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Total de Alunos Matriculados</p>
-          <p className="text-3xl font-extrabold text-slate-800 dark:text-white mt-2">{matriculas.length}</p>
-        </div>
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-xl shadow border-l-4 border-emerald-500 border border-slate-100 dark:border-slate-800">
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Disciplinas Ministradas</p>
-          <p className="text-3xl font-extrabold text-slate-800 dark:text-white mt-2">{disciplinasUnicas.length}</p>
-        </div>
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-xl shadow border-l-4 border-purple-500 border border-slate-100 dark:border-slate-800">
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Acompanhamento Inclusivo</p>
-          <p className="text-3xl font-extrabold text-slate-800 dark:text-white mt-2">Ativo</p>
-        </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <StatCard
+          rotulo="Alunos matriculados"
+          valor={matriculas.length}
+          detalhe="Vínculos sob sua docência"
+          tom="ceu"
+          icone={<IconeUsuarios className="h-5 w-5" />}
+        />
+        <StatCard
+          rotulo="Disciplinas ministradas"
+          valor={disciplinasUnicas.length}
+          detalhe="Códigos distintos"
+          tom="esmeralda"
+          icone={<IconeLivro className="h-5 w-5" />}
+        />
+        <StatCard
+          rotulo="Acompanhamento inclusivo"
+          valor="Ativo"
+          detalhe="Recursos de IA e diretrizes DUA disponíveis"
+          tom="violeta"
+          icone={<IconeDocumento className="h-5 w-5" />}
+        />
       </div>
 
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow border border-slate-100 dark:border-slate-800 space-y-2">
-        <h3 className="text-lg font-bold text-slate-800 dark:text-white">Educação Inclusiva e Anexos</h3>
-        <p className="text-sm text-slate-600 dark:text-slate-300">
-          Acesse a aba <strong>Documentos & Laudos Inclusivos</strong> para consultar laudos e materiais de cada estudante vinculado às suas turmas.
-        </p>
-      </div>
+      <Card>
+        <CardHeader
+          titulo="Como usar este painel"
+          descricao="Tudo parte do material anexado a cada matrícula."
+        />
+        <CardBody>
+          <ol className="grid grid-cols-1 gap-3 text-sm text-slate-600 dark:text-slate-300 md:grid-cols-3">
+            <li className="rounded-xl border border-slate-200/80 p-4 dark:border-slate-800">
+              <p className="text-xs font-bold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">
+                1. Abra os documentos
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                Em <strong>Alunos e disciplinas</strong>, clique em “Ver documentos” para ver laudos e
+                entregas do estudante.
+              </p>
+            </li>
+            <li className="rounded-xl border border-slate-200/80 p-4 dark:border-slate-800">
+              <p className="text-xs font-bold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">
+                2. Use as ações de IA
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                No menu <strong>IA</strong> de cada arquivo: resumo, adaptação de material e Termômetro
+                DUA.
+              </p>
+            </li>
+            <li className="rounded-xl border border-slate-200/80 p-4 dark:border-slate-800">
+              <p className="text-xs font-bold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">
+                3. Envie materiais
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                Em <strong>Documentos</strong>, anexe planos e atividades adaptadas para o aluno.
+              </p>
+            </li>
+          </ol>
+        </CardBody>
+      </Card>
     </div>
   );
 }

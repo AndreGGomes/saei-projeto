@@ -1,34 +1,52 @@
-// Aba "Professores": listagem somente-leitura do corpo docente registrado.
+import Avatar from '../../ui/Avatar';
+import EmptyState from '../../ui/EmptyState';
+import { TableShell, THead, TBody, TR, TH, TD } from '../../ui/Table';
+import { IconeUsuarios } from '../../ui/icons';
+
+// Listagem (somente leitura) do corpo docente registrado.
 export default function TabProfessores({ professores }) {
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Corpo Docente Registrado</h2>
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow overflow-hidden border border-slate-100 dark:border-slate-800">
-        <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300">
-          <thead className="bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border-b dark:border-slate-700">
-            <tr>
-              <th className="p-4">Nome do Docente</th>
-              <th className="p-4">E-mail Institucional</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y dark:divide-slate-800">
-            {professores.length === 0 ? (
-              <tr>
-                <td colSpan="2" className="p-6 text-center text-slate-400">
-                  Nenhum professor registrado.
-                </td>
-              </tr>
-            ) : (
-              professores.map((prof, idx) => (
-                <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
-                  <td className="p-4 font-bold text-slate-800 dark:text-white">{prof.nome}</td>
-                  <td className="p-4 font-mono text-slate-600 dark:text-slate-400">{prof.email}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+          Corpo docente registrado
+        </h3>
+        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          Professores que podem receber matrículas.
+        </p>
       </div>
+
+      {professores.length === 0 ? (
+        <EmptyState
+          icone={<IconeUsuarios className="h-6 w-6" />}
+          titulo="Nenhum professor registrado"
+          descricao="Contas de professor são criadas na tela de cadastro com o perfil “Professor”."
+        />
+      ) : (
+        <TableShell>
+          <THead>
+            <tr>
+              <TH>Docente</TH>
+              <TH>E-mail institucional</TH>
+            </tr>
+          </THead>
+          <TBody>
+            {professores.map((prof, idx) => (
+              <TR key={prof.email || idx}>
+                <TD>
+                  <div className="flex items-center gap-3">
+                    <Avatar nome={prof.nome} tamanho="sm" />
+                    <span className="font-semibold text-slate-900 dark:text-white">{prof.nome}</span>
+                  </div>
+                </TD>
+                <TD className="font-mono text-xs text-slate-500 dark:text-slate-400">
+                  {prof.email}
+                </TD>
+              </TR>
+            ))}
+          </TBody>
+        </TableShell>
+      )}
     </div>
   );
 }

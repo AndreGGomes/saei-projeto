@@ -1,76 +1,93 @@
-// Aba "Tutoria Inclusiva": formulário para assumir tutoria + tabela de tutorados.
-export default function TabTutoria({ tutorados, matriculaTutorar, setMatriculaTutorar, onVincularTutor }) {
+import Avatar from '../../ui/Avatar';
+import Badge from '../../ui/Badge';
+import Button from '../../ui/Button';
+import { Card, CardBody, CardHeader } from '../../ui/Card';
+import EmptyState from '../../ui/EmptyState';
+import { Field, Input } from '../../ui/Field';
+import { TableShell, THead, TBody, TR, TH, TD } from '../../ui/Table';
+import { IconeTutoria } from '../../ui/icons';
+
+// Tutoria: assumir o acompanhamento de um aluno pela matrícula + lista de tutorados.
+export default function TabTutoria({
+  tutorados,
+  matriculaTutorar,
+  setMatriculaTutorar,
+  onVincularTutor,
+}) {
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
-        Tutoria e Acompanhamento Pedagógico Individual
-      </h2>
+      <Card>
+        <CardHeader
+          titulo="Assumir tutoria"
+          descricao="Vincule o estudante ao seu acompanhamento pedagógico individual."
+          icone={<IconeTutoria className="h-4 w-4" />}
+        />
+        <form onSubmit={onVincularTutor}>
+          <CardBody>
+            <Field
+              label="Matrícula do estudante"
+              dica="A matrícula precisa já existir no sistema."
+              className="max-w-md"
+              obrigatorio
+            >
+              {(props) => (
+                <Input
+                  {...props}
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Ex.: 20260101"
+                  value={matriculaTutorar}
+                  onChange={(e) => setMatriculaTutorar(e.target.value)}
+                  required
+                />
+              )}
+            </Field>
+          </CardBody>
+          <div className="flex justify-end border-t border-slate-200/70 px-5 py-3.5 dark:border-slate-800">
+            <Button type="submit">Assumir tutoria</Button>
+          </div>
+        </form>
+      </Card>
 
-      <form
-        onSubmit={onVincularTutor}
-        className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow space-y-4 border border-slate-100 dark:border-slate-800"
-      >
-        <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200">
-          Assumir Tutoria de Aluno
-        </h3>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          Digite a matrícula do estudante com necessidades educacionais para vinculá-lo ao seu acompanhamento direto.
-        </p>
-
-        <div className="flex flex-col sm:flex-row gap-4 max-w-xl">
-          <input
-            type="text"
-            placeholder="Matrícula do Estudante (ex: 20260101)"
-            value={matriculaTutorar}
-            onChange={(e) => setMatriculaTutorar(e.target.value)}
-            className="border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 rounded-lg text-sm flex-1 text-slate-800 dark:text-white focus:outline-purple-500"
-            required
-          />
-          <button
-            type="submit"
-            className="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-lg font-semibold text-sm transition shadow"
-          >
-            Assumir Tutoria
-          </button>
-        </div>
-      </form>
-
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow overflow-hidden border border-slate-100 dark:border-slate-800">
-        <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300">
-          <thead className="bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border-b dark:border-slate-700">
+      {tutorados.length === 0 ? (
+        <EmptyState
+          icone={<IconeTutoria className="h-6 w-6" />}
+          titulo="Nenhum aluno em tutoria"
+          descricao="Ao assumir uma tutoria, o estudante aparece aqui com o status de acompanhamento."
+        />
+      ) : (
+        <TableShell>
+          <THead>
             <tr>
-              <th className="p-4">Matrícula</th>
-              <th className="p-4">Nome do Aluno Tutorado</th>
-              <th className="p-4 text-center">Status de Acompanhamento</th>
+              <TH>Estudante</TH>
+              <TH>Matrícula</TH>
+              <TH className="text-right">Acompanhamento</TH>
             </tr>
-          </thead>
-          <tbody className="divide-y dark:divide-slate-800">
-            {tutorados.length === 0 ? (
-              <tr>
-                <td colSpan="3" className="p-6 text-center text-slate-400">
-                  Você ainda não assumiu a tutoria de nenhum aluno.
-                </td>
-              </tr>
-            ) : (
-              tutorados.map((aluno, idx) => (
-                <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
-                  <td className="p-4 font-mono font-bold text-purple-600 dark:text-purple-400">
-                    {aluno.matricula}
-                  </td>
-                  <td className="p-4 font-bold text-slate-800 dark:text-white">
-                    {aluno.nome}
-                  </td>
-                  <td className="p-4 text-center">
-                    <span className="bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300 text-xs px-2.5 py-1 rounded-full font-semibold">
-                      Em Tutoria Ativa
+          </THead>
+          <TBody>
+            {tutorados.map((aluno, idx) => (
+              <TR key={aluno.matricula || idx}>
+                <TD>
+                  <div className="flex items-center gap-3">
+                    <Avatar nome={aluno.nome} tamanho="sm" />
+                    <span className="font-semibold text-slate-900 dark:text-white">
+                      {aluno.nome}
                     </span>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                  </div>
+                </TD>
+                <TD>
+                  <Badge tom="neutro" mono>
+                    {aluno.matricula}
+                  </Badge>
+                </TD>
+                <TD className="text-right">
+                  <Badge tom="esmeralda">Tutoria ativa</Badge>
+                </TD>
+              </TR>
+            ))}
+          </TBody>
+        </TableShell>
+      )}
     </div>
   );
 }

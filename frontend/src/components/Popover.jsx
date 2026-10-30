@@ -26,7 +26,7 @@ export default function Popover({ rect, ancoraRef, onFechar, largura = 250, chil
   if (!rect) return null;
 
   const espacoAbaixo = window.innerHeight - rect.bottom;
-  const abrirAcima = espacoAbaixo < 220 && rect.top > espacoAbaixo;
+  const abrirAcima = espacoAbaixo < 240 && rect.top > espacoAbaixo;
   const left = Math.max(8, Math.min(rect.left, window.innerWidth - largura - 8));
   const estilo = abrirAcima
     ? { left, bottom: window.innerHeight - rect.top + 6, width: largura }
@@ -35,8 +35,9 @@ export default function Popover({ rect, ancoraRef, onFechar, largura = 250, chil
   return (
     <div
       ref={ref}
+      role="menu"
       style={estilo}
-      className="fixed z-50 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-xl p-2 text-left"
+      className="fixed z-50 overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-1.5 text-left shadow-xl shadow-slate-900/10 dark:border-slate-700 dark:bg-slate-900 dark:shadow-black/40"
     >
       {children}
     </div>

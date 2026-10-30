@@ -1,24 +1,24 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { documentos as acoesDocumentos, matriculas as acoesMatriculas } from '../actions';
 import useTheme from '../hooks/useTheme';
-import ThemeToggle from '../components/ThemeToggle';
+import DashboardLayout from '../layouts/DashboardLayout';
+import EmptyState from '../ui/EmptyState';
+import { useAvisos } from '../ui/avisos';
+import { IconeBrilhos, IconeDocumento, IconeGrafico, IconeLivro } from '../ui/icons';
 import { baixarDocumento } from '../utils/documentos';
 import { encerrarSessao } from '../utils/sessao';
 import TabVisaoGeral from '../components/aluno/TabVisaoGeral';
 import TabDocumentos from '../components/aluno/TabDocumentos';
 import TabPreferencias from '../components/aluno/TabPreferencias';
 
-// Página do painel do aluno: concentra apenas o estado, a carga de dados e os
-// handlers de negócio. A renderização foi decomposta nas abas de components/aluno.
+// Painel do aluno: concentra estado, carga de dados e handlers. A renderização fica
+// nas abas de components/aluno e o shell visual em layouts/DashboardLayout.
 export default function DashboardAluno() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [abaAtiva, setAbaAtiva] = useState('overview');
 
-  // Dados do usuário logado
   const [usuario, setUsuario] = useState(null);
-
-  // Estados principais
   const [matriculas, setMatriculas] = useState([]);
   const [matriculaSelecionada, setMatriculaSelecionada] = useState(null);
   const [documentosMatricula, setDocumentosMatricula] = useState({
@@ -27,45 +27,32 @@ export default function DashboardAluno() {
   });
 
   const [loading, setLoading] = useState(true);
-  // Começa em true: a primeira carga acontece logo no mount, sem setState síncrono no efeito
   const [loadingDocs, setLoadingDocs] = useState(true);
-  // Contador que força recarregar os anexos da MESMA matrícula. Sem ele, pedir de novo
-  // a matrícula já selecionada não mudava nenhuma dependência do efeito de carga e a
-  // tela ficava em "Carregando anexos da disciplina..." para sempre.
   const [versaoDocs, setVersaoDocs] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [erro, setErro] = useState('');
   const { isDarkMode, setTheme } = useTheme();
 
-  // Preferências de aprendizagem por matrícula (texto em edição no formulário)
   const [preferencias, setPreferencias] = useState({});
   const [salvandoPref, setSalvandoPref] = useState(null);
   const [prefSalva, setPrefSalva] = useState(null);
 
-  // Formulário de Upload de Documento
-  const [uploadForm, setUploadForm] = useState({
-    titulo: '',
-    tipo: 'ATIVIDADE',
-    arquivo: null,
-  });
+  const [uploadForm, setUploadForm] = useState({ titulo: '', tipo: 'ATIVIDADE', arquivo: null });
 
-  // Logout declarado antes dos handlers que o utilizam no fluxo de erro
+  const { sucesso, erro: avisarErro, confirmar } = useAvisos();
+
   const handleLogout = () => encerrarSessao(navigate);
 
-  // 1. BUSCA DAS MATRÍCULAS DO ALUNO (GET /matriculas/minhas-matriculas-aluno)
-  // Cadeia de promises (e não async/await) para o react-hooks/set-state-in-effect
-  // não tratar os setStates como sincronos dentro do efeito de mount.
+  // 1. MATRÍCULAS DO ALUNO (cadeia de promises para não haver setState síncrono no efeito)
   const carregarMinhasMatriculas = useCallback(() => {
     return acoesMatriculas
       .minhasMatriculasDoAluno()
       .then((lista) => {
         const userSalvo = localStorage.getItem('user');
-        if (userSalvo) {
-          setUsuario(JSON.parse(userSalvo));
-        }
+        if (userSalvo) setUsuario(JSON.parse(userSalvo));
+
         setMatriculas(lista);
 
-        // Preenche o rascunho das preferências com o valor salvo de cada matrícula
         const iniciais = {};
         lista.forEach((m) => {
           iniciais[m.id] = m.preferencias_do_aluno || '';
@@ -79,42 +66,34 @@ export default function DashboardAluno() {
       .catch((err) => {
         console.error('Erro ao carregar matrículas do aluno:', err);
         if (err.status === 401 || err.status === 403) {
-          alert('Sessão expirada ou não autorizada. Faça login novamente.');
+          avisarErro('Sua sessão expirou. Entre novamente para continuar.');
           encerrarSessao(navigate);
           return;
         }
         setErro(err.message);
       })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, [navigate]);
+      .finally(() => setLoading(false));
+  }, [navigate, avisarErro]);
 
   useEffect(() => {
     carregarMinhasMatriculas();
   }, [carregarMinhasMatriculas]);
 
-  // 2. BUSCA DOS DOCUMENTOS DA MATRÍCULA SELECIONADA (GET /documentos/matricula/{id})
-  // setLoadingDocs(true) acontece nos handlers de seleção; aqui só gravamos o resultado.
+  // 2. ANEXOS DA MATRÍCULA SELECIONADA
   const carregarDocumentosDaMatricula = useCallback((matriculaId) => {
     if (!matriculaId) return Promise.resolve();
     return acoesDocumentos
       .listarDocumentosDaMatricula(matriculaId)
-      .then((lista) => {
-        setDocumentosMatricula(lista);
-      })
+      .then((lista) => setDocumentosMatricula(lista))
       .catch((err) => {
         console.error('Erro ao buscar documentos da matrícula:', err);
-        alert(err.message || 'Erro ao carregar os anexos desta disciplina.');
+        avisarErro(err.message || 'Erro ao carregar os anexos desta disciplina.');
       })
-      .finally(() => {
-        setLoadingDocs(false);
-      });
-  }, []);
+      .finally(() => setLoadingDocs(false));
+  }, [avisarErro]);
 
-  // A dependência é o id (primitivo), não o objeto da matrícula: quando o handler
-  // seleciona a matrícula que já estava selecionada, o React descarta a atualização por
-  // ser a mesma referência, e antes isso deixava o estado de carregamento travado em true.
+  // Dependência no id + contador: repetir a mesma matrícula força nova carga e nunca
+  // deixa o estado de carregamento preso (o objeto poderia ser a mesma referência).
   const matriculaSelecionadaId = matriculaSelecionada?.id;
 
   useEffect(() => {
@@ -123,15 +102,15 @@ export default function DashboardAluno() {
     }
   }, [matriculaSelecionadaId, versaoDocs, carregarDocumentosDaMatricula]);
 
-  // 3. UPLOAD DE DOCUMENTO PARA O PROFESSOR (POST /documentos/upload/{matricula_id})
+  // 3. UPLOAD PARA O PROFESSOR
   const handleUploadDocumento = async (e) => {
     e.preventDefault();
     if (!matriculaSelecionada) {
-      alert('Selecione uma disciplina primeiro.');
+      avisarErro('Selecione uma disciplina antes de enviar o arquivo.');
       return;
     }
     if (!uploadForm.arquivo) {
-      alert('Selecione um arquivo para enviar.');
+      avisarErro('Escolha um arquivo para enviar.');
       return;
     }
 
@@ -143,38 +122,45 @@ export default function DashboardAluno() {
         arquivo: uploadForm.arquivo,
       });
 
-      alert('Documento enviado ao professor com sucesso!');
       setUploadForm({ titulo: '', tipo: 'ATIVIDADE', arquivo: null });
       const fileInput = document.getElementById('inputFileAluno');
       if (fileInput) fileInput.value = '';
 
+      sucesso('Documento enviado para revisão do professor.');
       setLoadingDocs(true);
       carregarDocumentosDaMatricula(matriculaSelecionada.id);
     } catch (err) {
       console.error('Erro no upload:', err);
-      alert(err.message || 'Falha ao realizar upload.');
+      avisarErro(err.message || 'Falha ao realizar upload.');
     } finally {
       setUploading(false);
     }
   };
 
-  // 4. DOWNLOAD E EXCLUSÃO DE DOCUMENTO (lógica compartilhada em utils/documentos)
-  const handleDownloadDocumento = (docId, titulo) => baixarDocumento(docId, titulo);
+  // 4. DOWNLOAD E EXCLUSÃO
+  const handleDownloadDocumento = (docId, titulo) =>
+    baixarDocumento(docId, titulo).catch((err) => avisarErro(err.message));
 
   const handleDeletarDocumento = async (docId) => {
-    if (!confirm('Deseja realmente excluir este documento?')) return;
+    const confirmado = await confirmar({
+      titulo: 'Excluir documento?',
+      mensagem: 'O arquivo sai da sua lista e também do painel do professor. Essa ação não pode ser desfeita.',
+      textoConfirmar: 'Excluir documento',
+    });
+    if (!confirmado) return;
+
     try {
       await acoesDocumentos.excluirDocumento(docId);
-      alert('Documento excluído com sucesso.');
+      sucesso('Documento excluído.');
       setLoadingDocs(true);
       carregarDocumentosDaMatricula(matriculaSelecionada.id);
     } catch (err) {
       console.error('Erro ao deletar documento:', err);
-      alert(err.message || 'Erro ao excluir o documento.');
+      avisarErro(err.message || 'Erro ao excluir o documento.');
     }
   };
 
-  // 5. PREFERÊNCIAS DE APRENDIZAGEM (PATCH /matriculas/{id}/preferencias)
+  // 5. PREFERÊNCIAS DE APRENDIZAGEM
   const editarPreferencia = (matriculaId, texto) => {
     setPreferencias((prev) => ({ ...prev, [matriculaId]: texto }));
     setPrefSalva(null);
@@ -188,21 +174,21 @@ export default function DashboardAluno() {
         preferencias[matriculaId]
       );
 
-      // O backend devolve a matrícula completa: mantém listas e rascunho em sincronia
       setMatriculas((prev) => prev.map((m) => (m.id === matriculaId ? matricula : m)));
-      setPreferencias((prev) => ({ ...prev, [matriculaId]: matricula.preferencias_do_aluno || '' }));
+      setPreferencias((prev) => ({
+        ...prev,
+        [matriculaId]: matricula.preferencias_do_aluno || '',
+      }));
       setPrefSalva(matriculaId);
     } catch (err) {
       console.error('Erro ao salvar preferências:', err);
-      alert(err.message || 'Erro ao salvar suas preferências.');
+      avisarErro(err.message || 'Erro ao salvar suas preferências.');
     } finally {
       setSalvandoPref(null);
     }
   };
 
-  // 6. Seleção e navegação (setLoadingDocs(true) aqui: é handler, não efeito)
-  // Ponto único de abertura dos anexos de uma matrícula: liga o loading e garante que
-  // a carga aconteça tanto ao trocar de disciplina quanto ao repetir a mesma.
+  // 6. NAVEGAÇÃO ENTRE DISCIPLINAS
   const abrirDocumentosDaMatricula = (matricula) => {
     if (!matricula) return;
     setLoadingDocs(true);
@@ -219,115 +205,80 @@ export default function DashboardAluno() {
 
   const verDocumentosDaMatricula = (m) => {
     abrirDocumentosDaMatricula(m);
-    setActiveTab('documentos');
+    setAbaAtiva('documentos');
   };
 
-  // Classes literais completas (o Tailwind não gera classes a partir de template dinâmico)
   const abas = [
-    { id: 'overview', label: 'Visão Geral', ativo: 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400' },
-    { id: 'documentos', label: 'Documentos & Atividades', ativo: 'border-emerald-600 text-emerald-600 dark:border-emerald-400 dark:text-emerald-400' },
-    { id: 'preferencias', label: 'Minhas Preferências de Aprendizagem', ativo: 'border-violet-600 text-violet-600 dark:border-violet-400 dark:text-violet-400' },
+    { id: 'overview', label: 'Visão geral', icone: <IconeGrafico className="h-4 w-4" /> },
+    {
+      id: 'documentos',
+      label: 'Documentos',
+      icone: <IconeDocumento className="h-4 w-4" />,
+      contagem:
+        documentosMatricula.enviados_pelo_aluno.length +
+        documentosMatricula.enviados_pelo_professor.length,
+    },
+    { id: 'preferencias', label: 'Preferências', icone: <IconeBrilhos className="h-4 w-4" /> },
   ];
 
+  const semVinculos = !loading && matriculas.length === 0 && !erro;
+
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex flex-col transition-colors duration-300">
-      {/* Header */}
-      <header className="bg-blue-900 dark:bg-slate-900 text-white px-6 py-4 flex justify-between items-center shadow-md border-b border-slate-800">
-        <div>
-          <h1 className="text-xl font-bold">SAEI — Painel do Aluno</h1>
-          <p className="text-xs text-blue-200 dark:text-slate-400">
-            {usuario ? `Estudante: ${usuario.nome}` : 'Minha jornada de aprendizagem inclusiva'}
-          </p>
-        </div>
-        <div className="flex items-center space-x-3">
-          {/* Seletor de Tema Sol e Lua */}
-          <ThemeToggle isDarkMode={isDarkMode} setTheme={setTheme} variant="dashboard" />
-          <button
-            onClick={handleLogout}
-            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition shadow"
-          >
-            Sair
-          </button>
-        </div>
-      </header>
+    <DashboardLayout
+      papel="ALUNO"
+      titulo={`Olá${usuario?.nome ? `, ${usuario.nome.split(' ')[0]}` : ''}`}
+      descricao="Suas disciplinas, materiais e preferências de aprendizagem."
+      usuario={usuario}
+      isDarkMode={isDarkMode}
+      setTheme={setTheme}
+      onSair={handleLogout}
+      abas={abas}
+      abaAtiva={abaAtiva}
+      onChangeAba={setAbaAtiva}
+      carregando={loading}
+      mensagemCarregando="Buscando suas disciplinas..."
+      erro={erro}
+    >
+      {semVinculos ? (
+        <EmptyState
+          icone={<IconeLivro className="h-6 w-6" />}
+          titulo="Você ainda não está vinculado a nenhuma disciplina"
+          descricao="Assim que a coordenação registrar sua matrícula, suas disciplinas e documentos aparecem aqui."
+        />
+      ) : (
+        <>
+          {abaAtiva === 'overview' && (
+            <TabVisaoGeral matriculas={matriculas} onVerDocumentos={verDocumentosDaMatricula} />
+          )}
 
-      {/* Abas */}
-      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 pt-4 transition-colors">
-        <nav className="flex space-x-6 overflow-x-auto">
-          {abas.map((aba) => (
-            <button
-              key={aba.id}
-              onClick={() => setActiveTab(aba.id)}
-              className={`pb-3 font-semibold text-sm border-b-2 transition whitespace-nowrap ${
-                activeTab === aba.id
-                  ? aba.ativo
-                  : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700'
-              }`}
-            >
-              {aba.label}
-            </button>
-          ))}
-        </nav>
-      </div>
+          {abaAtiva === 'documentos' && (
+            <TabDocumentos
+              matriculas={matriculas}
+              matriculaSelecionada={matriculaSelecionada}
+              onSelectMatricula={selecionarMatriculaPorId}
+              uploadForm={uploadForm}
+              setUploadForm={setUploadForm}
+              uploading={uploading}
+              onSubmitUpload={handleUploadDocumento}
+              loadingDocs={loadingDocs}
+              documentosMatricula={documentosMatricula}
+              onDownload={handleDownloadDocumento}
+              onDeletar={handleDeletarDocumento}
+            />
+          )}
 
-      <main className="flex-1 p-6 max-w-7xl mx-auto w-full">
-        {loading && (
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-8 text-center text-slate-500 dark:text-slate-400 shadow">
-            <p className="animate-pulse font-medium">Buscando suas disciplinas no servidor...</p>
-          </div>
-        )}
-
-        {erro && !loading && (
-          <div className="mb-6 rounded-lg bg-red-50 dark:bg-red-950/50 p-4 text-sm text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900">
-            {erro}
-          </div>
-        )}
-
-        {!loading && matriculas.length === 0 && !erro && (
-          <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-10 text-center">
-            <p className="text-lg font-bold text-slate-700 dark:text-slate-200">
-              Você ainda não está vinculado a nenhuma disciplina
-            </p>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-              Assim que a coordenação registrar sua matrícula, suas disciplinas e documentos aparecem aqui.
-            </p>
-          </div>
-        )}
-
-        {/* 1. ABA VISÃO GERAL */}
-        {!loading && matriculas.length > 0 && activeTab === 'overview' && (
-          <TabVisaoGeral matriculas={matriculas} onVerDocumentos={verDocumentosDaMatricula} />
-        )}
-
-        {/* 2. ABA DOCUMENTOS & ATIVIDADES */}
-        {!loading && matriculas.length > 0 && activeTab === 'documentos' && (
-          <TabDocumentos
-            matriculas={matriculas}
-            matriculaSelecionada={matriculaSelecionada}
-            onSelectMatricula={selecionarMatriculaPorId}
-            uploadForm={uploadForm}
-            setUploadForm={setUploadForm}
-            uploading={uploading}
-            onSubmitUpload={handleUploadDocumento}
-            loadingDocs={loadingDocs}
-            documentosMatricula={documentosMatricula}
-            onDownload={handleDownloadDocumento}
-            onDeletar={handleDeletarDocumento}
-          />
-        )}
-
-        {/* 3. ABA PREFERÊNCIAS DE APRENDIZAGEM */}
-        {!loading && matriculas.length > 0 && activeTab === 'preferencias' && (
-          <TabPreferencias
-            matriculas={matriculas}
-            preferencias={preferencias}
-            onEditar={editarPreferencia}
-            onSalvar={salvarPreferencia}
-            salvandoId={salvandoPref}
-            salvoId={prefSalva}
-          />
-        )}
-      </main>
-    </div>
+          {abaAtiva === 'preferencias' && (
+            <TabPreferencias
+              matriculas={matriculas}
+              preferencias={preferencias}
+              onEditar={editarPreferencia}
+              onSalvar={salvarPreferencia}
+              salvandoId={salvandoPref}
+              salvoId={prefSalva}
+            />
+          )}
+        </>
+      )}
+    </DashboardLayout>
   );
 }

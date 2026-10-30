@@ -1,7 +1,14 @@
 import ListaDocumentos from '../ListaDocumentos';
+import Badge from '../../ui/Badge';
+import Button from '../../ui/Button';
+import { Card, CardBody, CardHeader } from '../../ui/Card';
+import { Field, Input, Select } from '../../ui/Field';
+import SeletorArquivo from '../../ui/SeletorArquivo';
+import { SkeletonLista } from '../../ui/Spinner';
+import { IconeDocumento, IconeUpload, IconeUsuarios } from '../../ui/icons';
 
-// Aba "Documentos & Atividades" do aluno: seletor de disciplina, envio ao
-// professor e as duas listas (enviadas por mim / enviadas pelo professor).
+// Aba de documentos do aluno: contexto da disciplina, envio ao professor e as duas
+// listas (enviados por mim / enviados pelo professor).
 export default function TabDocumentos({
   matriculas,
   matriculaSelecionada,
@@ -17,139 +24,148 @@ export default function TabDocumentos({
 }) {
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
-            Documentos e Atividades
-          </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Envie laudos e atividades ao professor e acompanhe os materiais recebidos
-          </p>
-        </div>
-
-        {matriculas.length > 1 && (
-          <div className="flex items-center space-x-2">
-            <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Disciplina:</label>
-            <select
-              value={matriculaSelecionada ? matriculaSelecionada.id : ''}
-              onChange={(e) => onSelectMatricula(Number(e.target.value))}
-              className="border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 rounded-lg text-xs text-slate-800 dark:text-white focus:outline-emerald-500"
-            >
-              {matriculas.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.disciplina.codigo} — {m.disciplina.nome}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-      </div>
-
-      {matriculaSelecionada && (
-        <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 rounded-xl p-4 flex flex-wrap justify-between items-center text-sm">
-          <div>
-            <span className="text-emerald-800 dark:text-emerald-300 font-bold">Disciplina:</span>{' '}
-            <span className="text-slate-800 dark:text-white font-medium">
-              {matriculaSelecionada.disciplina.codigo} — {matriculaSelecionada.disciplina.nome}
+      {/* Contexto da disciplina selecionada */}
+      <Card>
+        <CardBody className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-300">
+              <IconeDocumento className="h-5 w-5" />
             </span>
-          </div>
-          <div>
-            <span className="text-emerald-800 dark:text-emerald-300 font-bold">Professor(a):</span>{' '}
-            <span className="text-slate-800 dark:text-white font-medium">
-              {matriculaSelecionada.professor.nome}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Formulário de Upload para o Professor */}
-      {matriculaSelecionada && (
-        <form
-          onSubmit={onSubmitUpload}
-          className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow space-y-4 border border-slate-100 dark:border-slate-800"
-        >
-          <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200">
-            Enviar Documento ao Professor
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                Título do Documento
-              </label>
-              <input
-                type="text"
-                placeholder="Ex: Laudo Médico - Atualizado"
-                value={uploadForm.titulo}
-                onChange={(e) => setUploadForm({ ...uploadForm, titulo: e.target.value })}
-                className="border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 rounded-lg text-sm w-full text-slate-800 dark:text-white focus:outline-emerald-500"
-                required
-              />
+            <div className="min-w-0">
+              {matriculaSelecionada ? (
+                <>
+                  <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
+                    <Badge tom="esmeralda" mono>
+                      {matriculaSelecionada.disciplina.codigo}
+                    </Badge>
+                    {matriculaSelecionada.disciplina.nome}
+                  </p>
+                  <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                    <IconeUsuarios className="h-3.5 w-3.5" />
+                    {matriculaSelecionada.professor.nome}
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Selecione uma disciplina para ver os anexos.
+                </p>
+              )}
             </div>
+          </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                Tipo de Material
-              </label>
-              <select
-                value={uploadForm.tipo}
-                onChange={(e) => setUploadForm({ ...uploadForm, tipo: e.target.value })}
-                className="border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 rounded-lg text-sm w-full text-slate-800 dark:text-white focus:outline-emerald-500"
+          {matriculas.length > 1 && (
+            <Field label="Disciplina" className="w-full sm:w-64">
+              {(props) => (
+                <Select
+                  {...props}
+                  value={matriculaSelecionada ? matriculaSelecionada.id : ''}
+                  onChange={(e) => onSelectMatricula(Number(e.target.value))}
+                >
+                  {matriculas.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.disciplina.codigo} — {m.disciplina.nome}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </Field>
+          )}
+        </CardBody>
+      </Card>
+
+      {/* Envio ao professor */}
+      {matriculaSelecionada && (
+        <Card>
+          <CardHeader
+            titulo="Enviar documento ao professor"
+            descricao="Laudos, atividades concluídas ou qualquer material que o docente precise ver."
+            icone={<IconeUpload className="h-4 w-4" />}
+          />
+          <form onSubmit={onSubmitUpload}>
+            <CardBody className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <Field label="Título do documento" obrigatorio>
+                {(props) => (
+                  <Input
+                    {...props}
+                    type="text"
+                    placeholder="Ex.: Laudo médico atualizado"
+                    value={uploadForm.titulo}
+                    onChange={(e) => setUploadForm({ ...uploadForm, titulo: e.target.value })}
+                    required
+                  />
+                )}
+              </Field>
+
+              <Field label="Tipo de material">
+                {(props) => (
+                  <Select
+                    {...props}
+                    value={uploadForm.tipo}
+                    onChange={(e) => setUploadForm({ ...uploadForm, tipo: e.target.value })}
+                  >
+                    <option value="ATIVIDADE">Atividade</option>
+                    <option value="LAUDO_MEDICO">Laudo médico</option>
+                    <option value="PLANO_DE_AULA">Plano de aula</option>
+                    <option value="OUTROS">Outros documentos</option>
+                  </Select>
+                )}
+              </Field>
+
+              <Field label="Arquivo" dica="PDF, imagem ou documento." obrigatorio>
+                {(props) => (
+                  <SeletorArquivo
+                    controleProps={props}
+                    id="inputFileAluno"
+                    arquivo={uploadForm.arquivo}
+                    onChange={(arquivo) => setUploadForm({ ...uploadForm, arquivo })}
+                    required
+                  />
+                )}
+              </Field>
+            </CardBody>
+            <div className="flex justify-end border-t border-slate-200/70 px-5 py-3.5 dark:border-slate-800">
+              <Button
+                type="submit"
+                variante="sucesso"
+                carregando={uploading}
+                iconeEsquerda={<IconeUpload className="h-4 w-4" />}
               >
-                <option value="ATIVIDADE">Atividade Adaptada</option>
-                <option value="LAUDO_MEDICO">Laudo Médico</option>
-                <option value="PLANO_DE_AULA">Plano de Aula</option>
-                <option value="OUTROS">Outros Documentos</option>
-              </select>
+                {uploading ? 'Enviando...' : 'Enviar ao professor'}
+              </Button>
             </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                Arquivo Físico (PDF, Imagem, etc.)
-              </label>
-              <input
-                id="inputFileAluno"
-                type="file"
-                onChange={(e) => setUploadForm({ ...uploadForm, arquivo: e.target.files[0] })}
-                className="border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 rounded-lg text-xs w-full text-slate-800 dark:text-white file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:bg-emerald-600 file:text-white hover:file:bg-emerald-700"
-                required
-              />
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={uploading}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg font-semibold text-sm transition shadow disabled:opacity-50"
-          >
-            {uploading ? 'Enviando Arquivo...' : 'Enviar ao Professor'}
-          </button>
-        </form>
+          </form>
+        </Card>
       )}
 
-      {/* Listas Divididas (Você vs Professor) */}
+      {/* Listas */}
       {loadingDocs ? (
-        <p className="text-center py-6 text-slate-400 animate-pulse">Carregando anexos da disciplina...</p>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <Card>
+            <CardBody>
+              <SkeletonLista linhas={2} />
+            </CardBody>
+          </Card>
+          <Card>
+            <CardBody>
+              <SkeletonLista linhas={2} />
+            </CardBody>
+          </Card>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* 1. DOCUMENTOS ENVIADOS PELO ALUNO */}
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
           <ListaDocumentos
-            variante="painel"
             cor="blue"
-            titulo="Enviados por Você"
-            legenda="Laudos e Entregas"
+            titulo="Enviados por você"
+            legenda="Laudos e entregas"
             vazioTexto="Você ainda não enviou documentos para esta disciplina."
             documentos={documentosMatricula.enviados_pelo_aluno}
             onDownload={onDownload}
             onDelete={onDeletar}
           />
-
-          {/* 2. DOCUMENTOS ENVIADOS PELO PROFESSOR */}
           <ListaDocumentos
-            variante="painel"
             cor="emerald"
-            titulo="Enviados pelo Professor"
-            legenda="Planos e Materiais"
+            titulo="Enviados pelo professor"
+            legenda="Planos e materiais"
             vazioTexto="O professor ainda não anexou materiais para esta disciplina."
             documentos={documentosMatricula.enviados_pelo_professor}
             onDownload={onDownload}

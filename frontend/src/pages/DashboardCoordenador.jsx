@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   auth,
@@ -8,7 +8,9 @@ import {
   matriculas as acoesMatriculas,
 } from '../actions';
 import useTheme from '../hooks/useTheme';
-import ThemeToggle from '../components/ThemeToggle';
+import DashboardLayout from '../layouts/DashboardLayout';
+import { useAvisos } from '../ui/avisos';
+import { IconeDocumento, IconeGrafico, IconeLivro, IconeTutoria, IconeUsuarios } from '../ui/icons';
 import { baixarDocumento } from '../utils/documentos';
 import { encerrarSessao } from '../utils/sessao';
 import TabVisaoGeral from '../components/coordenador/TabVisaoGeral';
@@ -20,13 +22,13 @@ import ModalEditarDisciplina from '../components/coordenador/ModalEditarDiscipli
 import ModalMudarProfessor from '../components/coordenador/ModalMudarProfessor';
 import ModalDocumentosMatricula from '../components/coordenador/ModalDocumentosMatricula';
 
-// Página do painel da coordenação: concentra apenas o estado, a carga de dados e os
-// handlers de negócio. A renderização foi decomposta nas abas/modais de components/coordenador.
+// Painel da coordenação: estado, carga e handlers aqui; visual nas abas, modais e shell.
 export default function DashboardCoordenador() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [abaAtiva, setAbaAtiva] = useState('overview');
 
-  // Estados com dados reais do banco
+  // Lido direto da sessão no primeiro render (sem setState dentro de efeito)
+  const [usuario] = useState(() => auth.usuarioDaSessao());
   const [disciplinas, setDisciplinas] = useState([]);
   const [professores, setProfessores] = useState([]);
   const [matriculas, setMatriculas] = useState([]);
@@ -35,7 +37,6 @@ export default function DashboardCoordenador() {
   const [erro, setErro] = useState('');
   const { isDarkMode, setTheme } = useTheme();
 
-  // Formulários de cadastro
   const [novaDisciplina, setNovaDisciplina] = useState({ nome: '', codigo: '' });
   const [novaMatricula, setNovaMatricula] = useState({
     aluno_matricula: '',
@@ -44,13 +45,11 @@ export default function DashboardCoordenador() {
   });
   const [matriculaTutorar, setMatriculaTutorar] = useState('');
 
-  // Modais de edição
   const [disciplinaEditando, setDisciplinaEditando] = useState(null);
   const [novoNomeDisciplina, setNovoNomeDisciplina] = useState('');
   const [matriculaEditando, setMatriculaEditando] = useState(null);
   const [novoProfessorEmail, setNovoProfessorEmail] = useState('');
 
-  // Modal de Documentos e Anexos da Matrícula (Para o Coordenador ver e baixar)
   const [matriculaDocsVisualizando, setMatriculaDocsVisualizando] = useState(null);
   const [documentosMatricula, setDocumentosMatricula] = useState({
     enviados_pelo_aluno: [],
@@ -58,45 +57,50 @@ export default function DashboardCoordenador() {
   });
   const [loadingDocs, setLoadingDocs] = useState(false);
 
-  // Logout declarado antes dos handlers que o utilizam no fluxo de erro
   const handleLogout = () => encerrarSessao(navigate);
 
-  // 1. BUSCA COMPLETA DE DADOS NO BACKEND
-  const carregarDadosDoBanco = async () => {
-    try {
-      setLoading(true);
-      setErro('');
+  const { sucesso, erro: avisarErro, confirmar } = useAvisos();
 
-      const [listaDisciplinas, listaProfessores, listaMatriculas, listaTutorados] =
-        await Promise.all([
-          acoesDisciplinas.listarDisciplinas(),
-          auth.listarProfessores(),
-          acoesMatriculas.listarMatriculas(),
-          acoesCoordenador.listarMeusVinculos(),
-        ]);
-
-      setDisciplinas(listaDisciplinas);
-      setProfessores(listaProfessores);
-      setMatriculas(listaMatriculas);
-      setTutorados(listaTutorados);
-    } catch (err) {
-      console.error('Erro ao carregar dados:', err);
-      if (err.status === 401 || err.status === 403) {
-        alert('Sessão expirada ou não autorizada. Faça login novamente.');
-        handleLogout();
-        return;
-      }
-      setErro(err.message || 'Não foi possível carregar os dados do servidor.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // 1. CARGA COMPLETA
+  // Cadeia de promises: os setState acontecem nos callbacks, nunca de forma síncrona
+  // dentro do efeito de mount (regra react-hooks/set-state-in-effect).
+  const carregarDadosDoBanco = useCallback(() => {
+    return Promise.all([
+      acoesDisciplinas.listarDisciplinas(),
+      auth.listarProfessores(),
+      acoesMatriculas.listarMatriculas(),
+      acoesCoordenador.listarMeusVinculos(),
+    ])
+      .then(([listaDisciplinas, listaProfessores, listaMatriculas, listaTutorados]) => {
+        setDisciplinas(listaDisciplinas);
+        setProfessores(listaProfessores);
+        setMatriculas(listaMatriculas);
+        setTutorados(listaTutorados);
+        setErro('');
+      })
+      .catch((err) => {
+        console.error('Erro ao carregar dados:', err);
+        if (err.status === 401 || err.status === 403) {
+          avisarErro('Sua sessão expirou. Entre novamente para continuar.');
+          encerrarSessao(navigate);
+          return;
+        }
+        setErro(err.message || 'Não foi possível carregar os dados do servidor.');
+      })
+      .finally(() => setLoading(false));
+  }, [navigate, avisarErro]);
 
   useEffect(() => {
     carregarDadosDoBanco();
-  }, []);
+  }, [carregarDadosDoBanco]);
 
-  // 2. CARREGAR DOCUMENTOS DE UMA MATRÍCULA SELECIONADA
+  // Recarga manual pelo botão do cabeçalho (handler, pode mexer no loading na hora)
+  const atualizarDados = () => {
+    setLoading(true);
+    carregarDadosDoBanco();
+  };
+
+  // 2. DOCUMENTOS DE UMA MATRÍCULA
   const abrirModalDocumentos = async (matricula) => {
     setMatriculaDocsVisualizando(matricula);
     setLoadingDocs(true);
@@ -104,30 +108,35 @@ export default function DashboardCoordenador() {
       setDocumentosMatricula(await acoesDocumentos.listarDocumentosDaMatricula(matricula.id));
     } catch (err) {
       console.error('Erro ao buscar documentos:', err);
-      alert(err.message || 'Erro ao carregar os documentos desta matrícula.');
+      avisarErro(err.message || 'Erro ao carregar os documentos desta matrícula.');
     } finally {
       setLoadingDocs(false);
     }
   };
 
-  // 3. DOWNLOAD E EXCLUSÃO DE DOCUMENTO (lógica compartilhada em utils/documentos)
-  const handleDownloadDocumento = (docId, titulo) => baixarDocumento(docId, titulo);
+  // 3. DOWNLOAD E EXCLUSÃO
+  const handleDownloadDocumento = (docId, titulo) =>
+    baixarDocumento(docId, titulo).catch((err) => avisarErro(err.message));
 
   const handleDeletarDocumento = async (docId) => {
-    if (!confirm('Como coordenador, tem certeza que deseja excluir este documento permanentemente?')) return;
+    const confirmado = await confirmar({
+      titulo: 'Excluir documento permanentemente?',
+      mensagem: 'Como coordenação, a exclusão vale para o aluno e para o professor desta matrícula.',
+      textoConfirmar: 'Excluir documento',
+    });
+    if (!confirmado) return;
+
     try {
       await acoesDocumentos.excluirDocumento(docId);
-      alert('Documento excluído.');
-      if (matriculaDocsVisualizando) {
-        abrirModalDocumentos(matriculaDocsVisualizando);
-      }
+      sucesso('Documento excluído.');
+      if (matriculaDocsVisualizando) abrirModalDocumentos(matriculaDocsVisualizando);
     } catch (err) {
       console.error('Erro ao excluir documento:', err);
-      alert(err.message || 'Erro ao excluir documento.');
+      avisarErro(err.message || 'Erro ao excluir documento.');
     }
   };
 
-  // 4. AÇÕES DE DISCIPLINA
+  // 4. DISCIPLINAS
   const handleAddDisciplina = async (e) => {
     e.preventDefault();
     try {
@@ -136,9 +145,10 @@ export default function DashboardCoordenador() {
         codigo: novaDisciplina.codigo.trim().toUpperCase(),
       });
       setNovaDisciplina({ nome: '', codigo: '' });
+      sucesso('Disciplina cadastrada.');
       carregarDadosDoBanco();
     } catch (err) {
-      alert(err.message || 'Erro ao cadastrar disciplina.');
+      avisarErro(err.message || 'Erro ao cadastrar disciplina.');
     }
   };
 
@@ -150,26 +160,31 @@ export default function DashboardCoordenador() {
       await acoesDisciplinas.renomearDisciplina(disciplinaEditando.codigo, novoNomeDisciplina.trim());
       setDisciplinaEditando(null);
       setNovoNomeDisciplina('');
+      sucesso('Nome da disciplina atualizado.');
       carregarDadosDoBanco();
     } catch (err) {
-      alert(err.message || 'Erro ao atualizar nome da disciplina.');
+      avisarErro(err.message || 'Erro ao atualizar nome da disciplina.');
     }
   };
 
   const handleDeletarDisciplina = async (codigo) => {
-    if (!confirm(`Atenção: Ao excluir ${codigo}, as matrículas ligadas a ela serão canceladas. Deseja continuar?`)) {
-      return;
-    }
+    const confirmado = await confirmar({
+      titulo: `Excluir ${codigo}?`,
+      mensagem: 'As matrículas ligadas a esta disciplina também serão canceladas.',
+      textoConfirmar: 'Excluir disciplina',
+    });
+    if (!confirmado) return;
 
     try {
       await acoesDisciplinas.excluirDisciplina(codigo);
+      sucesso(`Disciplina ${codigo} excluída.`);
       carregarDadosDoBanco();
     } catch (err) {
-      alert(err.message || 'Erro ao excluir disciplina.');
+      avisarErro(err.message || 'Erro ao excluir disciplina.');
     }
   };
 
-  // 5. AÇÕES DE MATRÍCULA
+  // 5. MATRÍCULAS
   const handleAddMatricula = async (e) => {
     e.preventDefault();
     try {
@@ -179,9 +194,10 @@ export default function DashboardCoordenador() {
         disciplinaCodigo: novaMatricula.disciplina_codigo,
       });
       setNovaMatricula({ aluno_matricula: '', professor_email: '', disciplina_codigo: '' });
+      sucesso('Matrícula efetivada.');
       carregarDadosDoBanco();
     } catch (err) {
-      alert(err.message || 'Erro ao efetivar matrícula.');
+      avisarErro(err.message || 'Erro ao efetivar matrícula.');
     }
   };
 
@@ -191,40 +207,46 @@ export default function DashboardCoordenador() {
       await acoesMatriculas.mudarProfessorDaMatricula(matriculaEditando.id, novoProfessorEmail);
       setMatriculaEditando(null);
       setNovoProfessorEmail('');
+      sucesso('Professor da matrícula atualizado.');
       carregarDadosDoBanco();
     } catch (err) {
-      alert(err.message || 'Erro ao mudar professor.');
+      avisarErro(err.message || 'Erro ao mudar professor.');
     }
   };
 
   const handleDeletarMatricula = async (id) => {
-    if (!confirm('Deseja realmente cancelar esta matrícula?')) return;
+    const confirmado = await confirmar({
+      titulo: 'Cancelar matrícula?',
+      mensagem: 'O aluno deixa de ver a disciplina e os documentos enviados nesse vínculo.',
+      textoConfirmar: 'Cancelar matrícula',
+    });
+    if (!confirmado) return;
+
     try {
       await acoesMatriculas.cancelarMatricula(id);
+      sucesso('Matrícula cancelada.');
       carregarDadosDoBanco();
     } catch (err) {
-      alert(err.message || 'Erro ao cancelar matrícula.');
+      avisarErro(err.message || 'Erro ao cancelar matrícula.');
     }
   };
 
-  // 6. AÇÕES DE TUTORIA
+  // 6. TUTORIA
   const handleVincularTutor = async (e) => {
     e.preventDefault();
     if (!matriculaTutorar.trim()) return;
 
     try {
       await acoesCoordenador.definirCoordenadorTutor(matriculaTutorar.trim());
-      alert('Você agora é o tutor responsável por este aluno!');
+      sucesso('Tutoria assumida. O aluno já aparece no seu acompanhamento.');
       setMatriculaTutorar('');
       carregarDadosDoBanco();
     } catch (err) {
-      alert(err.message || 'Erro ao vincular tutoria.');
+      avisarErro(err.message || 'Erro ao vincular tutoria.');
     }
   };
 
-  // 7. Abertura dos modais a partir das tabelas
-  // A edição busca os dados atuais da disciplina no servidor (GET /disciplinas/{codigo})
-  // para não editar um nome já desatualizado na lista carregada no início da sessão.
+  // 7. MODAIS
   const abrirEdicaoDisciplina = async (disc) => {
     setDisciplinaEditando(disc);
     setNovoNomeDisciplina(disc.nome);
@@ -233,7 +255,7 @@ export default function DashboardCoordenador() {
       setDisciplinaEditando(atual);
       setNovoNomeDisciplina(atual.nome);
     } catch (err) {
-      // Sem internet/servidor: o modal segue com os dados da lista (fallback)
+      // Sem servidor: o modal segue com os dados da lista (fallback)
       console.error('Erro ao buscar disciplina para edição:', err);
     }
   };
@@ -243,75 +265,53 @@ export default function DashboardCoordenador() {
     setNovoProfessorEmail(m.professor.email);
   };
 
-  // Classes literais completas (o Tailwind não gera classes a partir de template dinâmico)
   const abas = [
-    { id: 'overview', label: 'Visão Geral', ativo: 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400' },
-    { id: 'tutoria', label: `Tutoria Inclusiva (${tutorados.length})`, ativo: 'border-purple-600 text-purple-600 dark:border-purple-400 dark:text-purple-400' },
-    { id: 'disciplinas', label: `Disciplinas (${disciplinas.length})`, ativo: 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400' },
-    { id: 'professores', label: `Professores (${professores.length})`, ativo: 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400' },
-    { id: 'matriculas', label: `Matrículas & Documentos (${matriculas.length})`, ativo: 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400' },
+    { id: 'overview', label: 'Visão geral', icone: <IconeGrafico className="h-4 w-4" /> },
+    {
+      id: 'tutoria',
+      label: 'Tutoria',
+      icone: <IconeTutoria className="h-4 w-4" />,
+      contagem: tutorados.length,
+    },
+    {
+      id: 'disciplinas',
+      label: 'Disciplinas',
+      icone: <IconeLivro className="h-4 w-4" />,
+      contagem: disciplinas.length,
+    },
+    {
+      id: 'professores',
+      label: 'Professores',
+      icone: <IconeUsuarios className="h-4 w-4" />,
+      contagem: professores.length,
+    },
+    {
+      id: 'matriculas',
+      label: 'Matrículas',
+      icone: <IconeDocumento className="h-4 w-4" />,
+      contagem: matriculas.length,
+    },
   ];
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex flex-col transition-colors duration-300">
-      {/* Header */}
-      <header className="bg-blue-900 dark:bg-slate-900 text-white px-6 py-4 flex justify-between items-center shadow-md border-b border-slate-800">
-        <div>
-          <h1 className="text-xl font-bold">SAEI — Painel da Coordenação Pedagógica</h1>
-          <p className="text-xs text-blue-200 dark:text-slate-400">Gestão Inclusiva e Acompanhamento</p>
-        </div>
-        <div className="flex items-center space-x-3">
-          {/* Seletor de Tema Sol e Lua */}
-          <ThemeToggle isDarkMode={isDarkMode} setTheme={setTheme} variant="dashboard" />
-          <button
-            onClick={carregarDadosDoBanco}
-            className="text-xs bg-blue-800 hover:bg-blue-700 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-2 rounded-lg transition border border-blue-600 dark:border-slate-700 font-semibold"
-          >
-            🔄 Atualizar
-          </button>
-          <button
-            onClick={handleLogout}
-            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition shadow"
-          >
-            Sair
-          </button>
-        </div>
-      </header>
-
-      {/* Navegação por Abas */}
-      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 pt-4 transition-colors">
-        <nav className="flex space-x-6 overflow-x-auto">
-          {abas.map((aba) => (
-            <button
-              key={aba.id}
-              onClick={() => setActiveTab(aba.id)}
-              className={`pb-3 font-semibold text-sm border-b-2 transition whitespace-nowrap ${
-                activeTab === aba.id
-                  ? aba.ativo
-                  : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700'
-              }`}
-            >
-              {aba.label}
-            </button>
-          ))}
-        </nav>
-      </div>
-
-      <main className="flex-1 p-6 max-w-7xl mx-auto w-full">
-        {loading && (
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-8 text-center text-slate-500 dark:text-slate-400 shadow">
-            <p className="animate-pulse font-medium">Carregando dados...</p>
-          </div>
-        )}
-
-        {erro && !loading && (
-          <div className="mb-6 rounded-lg bg-red-50 dark:bg-red-950/50 p-4 text-sm text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900">
-            {erro}
-          </div>
-        )}
-
-        {/* 1. ABA VISÃO GERAL */}
-        {!loading && activeTab === 'overview' && (
+    <>
+      <DashboardLayout
+        papel="COORDENADOR"
+        titulo="Coordenação pedagógica"
+        descricao="Gerencie disciplinas, vínculos e o acompanhamento inclusivo."
+        usuario={usuario}
+        isDarkMode={isDarkMode}
+        setTheme={setTheme}
+        onSair={handleLogout}
+        onAtualizar={atualizarDados}
+        abas={abas}
+        abaAtiva={abaAtiva}
+        onChangeAba={setAbaAtiva}
+        carregando={loading}
+        mensagemCarregando="Carregando dados da coordenação..."
+        erro={erro}
+      >
+        {abaAtiva === 'overview' && (
           <TabVisaoGeral
             tutorados={tutorados}
             disciplinas={disciplinas}
@@ -320,8 +320,7 @@ export default function DashboardCoordenador() {
           />
         )}
 
-        {/* 2. ABA TUTORIA INCLUSIVA */}
-        {!loading && activeTab === 'tutoria' && (
+        {abaAtiva === 'tutoria' && (
           <TabTutoria
             tutorados={tutorados}
             matriculaTutorar={matriculaTutorar}
@@ -330,8 +329,7 @@ export default function DashboardCoordenador() {
           />
         )}
 
-        {/* 3. ABA DISCIPLINAS */}
-        {!loading && activeTab === 'disciplinas' && (
+        {abaAtiva === 'disciplinas' && (
           <TabDisciplinas
             disciplinas={disciplinas}
             novaDisciplina={novaDisciplina}
@@ -342,11 +340,9 @@ export default function DashboardCoordenador() {
           />
         )}
 
-        {/* 4. ABA PROFESSORES */}
-        {!loading && activeTab === 'professores' && <TabProfessores professores={professores} />}
+        {abaAtiva === 'professores' && <TabProfessores professores={professores} />}
 
-        {/* 5. ABA MATRÍCULAS COM VISUALIZAÇÃO DE DOCUMENTOS */}
-        {!loading && activeTab === 'matriculas' && (
+        {abaAtiva === 'matriculas' && (
           <TabMatriculas
             matriculas={matriculas}
             professores={professores}
@@ -359,9 +355,8 @@ export default function DashboardCoordenador() {
             onDeletarMatricula={handleDeletarMatricula}
           />
         )}
-      </main>
+      </DashboardLayout>
 
-      {/* MODAL 1: EDITAR NOME DE DISCIPLINA */}
       {disciplinaEditando && (
         <ModalEditarDisciplina
           disciplina={disciplinaEditando}
@@ -372,7 +367,6 @@ export default function DashboardCoordenador() {
         />
       )}
 
-      {/* MODAL 2: MUDAR PROFESSOR DA MATRÍCULA */}
       {matriculaEditando && (
         <ModalMudarProfessor
           matricula={matriculaEditando}
@@ -384,7 +378,6 @@ export default function DashboardCoordenador() {
         />
       )}
 
-      {/* MODAL 3: VISUALIZAR E BAIXAR DOCUMENTOS / LAUDOS (COORDENAÇÃO) */}
       {matriculaDocsVisualizando && (
         <ModalDocumentosMatricula
           matricula={matriculaDocsVisualizando}
@@ -395,6 +388,6 @@ export default function DashboardCoordenador() {
           onDeletar={handleDeletarDocumento}
         />
       )}
-    </div>
+    </>
   );
 }

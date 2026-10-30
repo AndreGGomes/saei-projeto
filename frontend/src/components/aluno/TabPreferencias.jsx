@@ -1,19 +1,38 @@
-// Aba "Preferências de Aprendizagem" do aluno: um cartão por matrícula com um
-// campo de texto livre para registrar como ele aprende melhor e o que precisa
-// para participar de forma inclusiva. Salva via PATCH /matriculas/{id}/preferencias.
-export default function TabPreferencias({ matriculas, preferencias, onEditar, onSalvar, salvandoId, salvoId }) {
+import Badge from '../../ui/Badge';
+import Button from '../../ui/Button';
+import { Card, CardBody, CardHeader } from '../../ui/Card';
+import { Field, Textarea } from '../../ui/Field';
+import { IconeBrilhos, IconeCheck } from '../../ui/icons';
+
+// Preferências de aprendizagem: um cartão por matrícula, salvando via PATCH
+// /matriculas/{id}/preferencias. O texto é visível para o professor da disciplina.
+export default function TabPreferencias({
+  matriculas,
+  preferencias,
+  onEditar,
+  onSalvar,
+  salvandoId,
+  salvoId,
+}) {
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
-          Minhas Preferências de Aprendizagem
-        </h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400 max-w-3xl">
-          Conte como você aprende melhor e o que precisa para participar das aulas — por exemplo:
-          exemplos visuais, mais tempo para leitura, instruções passo a passo, trabalhar em dupla.
-          O professor e a coordenação usam isso para adaptar as aulas à sua inclusão.
-        </p>
-      </div>
+      <Card className="border-indigo-200/70 bg-indigo-50/50 dark:border-indigo-900/60 dark:bg-indigo-950/20">
+        <CardBody className="flex items-start gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm dark:bg-slate-900 dark:text-indigo-300">
+            <IconeBrilhos className="h-4 w-4" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-indigo-900 dark:text-indigo-200">
+              Como você aprende melhor?
+            </p>
+            <p className="mt-0.5 text-xs leading-relaxed text-indigo-800/80 dark:text-indigo-300/80">
+              Conte o que ajuda na sua participação: exemplos visuais, mais tempo para leitura,
+              instruções passo a passo, trabalho em dupla. O professor e a coordenação usam isso para
+              adaptar as aulas.
+            </p>
+          </div>
+        </CardBody>
+      </Card>
 
       <div className="space-y-4">
         {matriculas.map((m) => {
@@ -24,50 +43,57 @@ export default function TabPreferencias({ matriculas, preferencias, onEditar, on
           const salvo = salvoId === m.id && !alterado;
 
           return (
-            <div
-              key={m.id}
-              className="bg-white dark:bg-slate-900 rounded-xl shadow border border-slate-100 dark:border-slate-800 p-5 space-y-3"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <p className="font-bold text-slate-800 dark:text-white text-sm">
-                    <span className="font-mono bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 text-xs px-2 py-0.5 rounded font-bold mr-2">
+            <Card key={m.id}>
+              <CardHeader
+                titulo={m.disciplina.nome}
+                descricao={`Professor(a): ${m.professor.nome}`}
+                icone={<IconeBrilhos className="h-4 w-4" />}
+                acao={
+                  <div className="flex items-center gap-2">
+                    <Badge tom="indigo" mono>
                       {m.disciplina.codigo}
-                    </span>
-                    {m.disciplina.nome}
-                  </p>
-                  <p className="text-xs text-slate-400 mt-0.5">Professor(a): {m.professor.nome}</p>
-                </div>
-                {salvo && (
-                  <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                    ✓ Preferência salva
-                  </span>
-                )}
-              </div>
-
-              <textarea
-                value={valor}
-                onChange={(e) => onEditar(m.id, e.target.value)}
-                rows={4}
-                placeholder="Ex: Prefiro instruções visuais, exemplos práticos e um pouco mais de tempo para leitura..."
-                className="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 rounded-lg text-sm text-slate-800 dark:text-white resize-y focus:outline-violet-500"
+                    </Badge>
+                    {salvo && (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                        <IconeCheck className="h-3.5 w-3.5" />
+                        Salvo
+                      </span>
+                    )}
+                  </div>
+                }
               />
-
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-[11px] text-slate-400">
-                  {valor.trim() === ''
-                    ? 'Sem preferência definida para esta disciplina.'
-                    : `${valor.length} caractere(s) — visível para o professor desta disciplina.`}
-                </p>
-                <button
-                  onClick={() => onSalvar(m.id)}
-                  disabled={salvando || !alterado}
-                  className="bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg text-xs font-semibold transition shadow disabled:opacity-40 disabled:cursor-not-allowed"
+              <CardBody>
+                <Field
+                  label="Minhas preferências nesta disciplina"
+                  dica={
+                    valor.trim() === ''
+                      ? 'Sem preferência definida para esta disciplina.'
+                      : `${valor.length} caractere(s) · visível para o professor desta disciplina.`
+                  }
                 >
-                  {salvando ? 'Salvando...' : 'Salvar Preferência'}
-                </button>
+                  {(props) => (
+                    <Textarea
+                      {...props}
+                      value={valor}
+                      onChange={(e) => onEditar(m.id, e.target.value)}
+                      rows={4}
+                      placeholder="Ex.: Prefiro instruções visuais, exemplos práticos e um pouco mais de tempo para leitura..."
+                      className={`${props.className} resize-y`}
+                    />
+                  )}
+                </Field>
+              </CardBody>
+              <div className="flex justify-end border-t border-slate-200/70 px-5 py-3.5 dark:border-slate-800">
+                <Button
+                  tamanho="sm"
+                  carregando={salvando}
+                  disabled={!alterado}
+                  onClick={() => onSalvar(m.id)}
+                >
+                  {salvando ? 'Salvando...' : 'Salvar preferência'}
+                </Button>
               </div>
-            </div>
+            </Card>
           );
         })}
       </div>

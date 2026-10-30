@@ -2,227 +2,239 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { auth } from '../actions';
 import useTheme from '../hooks/useTheme';
-import ThemeToggle from '../components/ThemeToggle';
+import AuthLayout from '../layouts/AuthLayout';
+import Alert from '../ui/Alert';
+import Button from '../ui/Button';
+import { Field, Input } from '../ui/Field';
+import { IconeOlho } from '../ui/icons';
+import { cx } from '../ui/utils';
+
+const PAPEIS = [
+  { id: 'ALUNO', rotulo: 'Aluno', descricao: 'Acompanha aulas e materiais' },
+  { id: 'PROFESSOR', rotulo: 'Professor', descricao: 'Envia planos e atividades' },
+  { id: 'COORDENADOR', rotulo: 'Coordenação', descricao: 'Gerencia vínculos e equipe' },
+];
+
+const VAZIO = { nome: '', email: '', senha: '', confirmarSenha: '', role: 'ALUNO', matricula: '' };
 
 export default function Cadastro() {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    nome: '',
-    email: '',
-    senha: '',
-    confirmarSenha: '',
-    role: 'ALUNO',
-    matricula: '',
-  });
-
+  const [form, setForm] = useState(VAZIO);
   const [mostrarSenha, setMostrarSenha] = useState(false);
-  const [mostrarConfirmarSenha, setMostrarConfirmarSenha] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
-  // Tema (dark/light) compartilhado via hook
+  const [erros, setErros] = useState({});
   const { isDarkMode, setTheme } = useTheme();
 
-  const handleChange = (e) => {
+  const alterar = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setForm((prev) => ({ ...prev, [name]: value }));
+    setErros((prev) => ({ ...prev, [name]: undefined }));
+    setErro('');
+  };
+
+  // Validação local antes de chamar a API: erros por campo, sem depender do backend.
+  const validar = () => {
+    const novos = {};
+    if (form.nome.trim().length < 3) novos.nome = 'Informe seu nome completo.';
+    if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) novos.email = 'Informe um e-mail válido.';
+    if (form.role === 'ALUNO' && !form.matricula.trim())
+      novos.matricula = 'A matrícula é obrigatória para alunos.';
+    if (form.senha.length < 6) novos.senha = 'Use pelo menos 6 caracteres.';
+    if (form.confirmarSenha !== form.senha) novos.confirmarSenha = 'As senhas não conferem.';
+    setErros(novos);
+    return Object.keys(novos).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErro('');
+    if (!validar()) return;
 
-    if (formData.senha !== formData.confirmarSenha) {
-      setErro('As senhas digitadas não conferem.');
-      return;
-    }
-
-    if (formData.senha.length < 6) {
-      setErro('A senha deve ter pelo menos 6 caracteres.');
-      return;
-    }
-
-    setLoading(true);
-
+    setCarregando(true);
     try {
-      if (formData.role === 'ALUNO' && !formData.matricula.trim()) {
-        setErro('A matrícula é obrigatória para alunos.');
-        setLoading(false);
-        return;
-      }
-
-      // A action escolhe o endpoint de cadastro conforme o papel escolhido
       await auth.registrar({
-        papel: formData.role,
-        nome: formData.nome,
-        email: formData.email,
-        senha: formData.senha,
-        matricula: formData.matricula.trim(),
+        papel: form.role,
+        nome: form.nome.trim(),
+        email: form.email.trim(),
+        senha: form.senha,
+        matricula: form.matricula.trim(),
       });
 
-      alert('Cadastro realizado com sucesso! Faça login.');
-      navigate('/login');
+      navigate('/login', {
+        state: { aviso: 'Cadastro realizado com sucesso! Entre com suas credenciais.' },
+      });
     } catch (err) {
       console.error(err);
       setErro(err.message);
     } finally {
-      setLoading(false);
+      setCarregando(false);
     }
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 p-4 transition-colors duration-300">
-      <div className="absolute top-6 right-6">
-        <ThemeToggle isDarkMode={isDarkMode} setTheme={setTheme} variant="cadastro" />
-      </div>
-
-      <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 p-8 shadow-xl border border-slate-100 dark:border-slate-800 transition-colors duration-300">
-        <div className="mb-6 text-center">
-          <h1 className="text-3xl font-extrabold text-blue-900 dark:text-blue-400">SAEI</h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Criar nova conta de usuário</p>
+    <AuthLayout isDarkMode={isDarkMode} setTheme={setTheme}>
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8 dark:border-slate-800 dark:bg-slate-900">
+        <div className="mb-5">
+          <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+            Criar sua conta
+          </h2>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Escolha o perfil de acesso e preencha os dados institucionais.
+          </p>
         </div>
 
         {erro && (
-          <div className="mb-4 rounded-lg bg-red-50 dark:bg-red-950/50 p-3 text-sm text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900">
+          <Alert tom="erro" titulo="Não foi possível concluir o cadastro" className="mb-4">
             {erro}
-          </div>
+          </Alert>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Nome Completo</label>
-            <input
-              type="text"
-              name="nome"
-              required
-              placeholder="Digite seu nome completo"
-              value={formData.nome}
-              onChange={handleChange}
-              className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-sm text-slate-800 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Papel de Acesso</label>
-            <select
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-              className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-sm text-slate-800 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="ALUNO">Aluno</option>
-              <option value="PROFESSOR">Professor</option>
-              <option value="COORDENADOR">Coordenador Pedagógico</option>
-            </select>
-          </div>
-
-          {formData.role === 'ALUNO' && (
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Matrícula Escolar</label>
-              <input
-                type="text"
-                name="matricula"
-                required
-                placeholder="Ex: 20260199"
-                value={formData.matricula}
-                onChange={handleChange}
-                className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-sm text-slate-800 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+          {/* Perfil de acesso */}
+          <fieldset>
+            <legend className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+              Perfil de acesso
+            </legend>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Perfil de acesso">
+              {PAPEIS.map((papel) => {
+                const ativo = form.role === papel.id;
+                return (
+                  <button
+                    key={papel.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={ativo}
+                    onClick={() => {
+                      setForm((prev) => ({ ...prev, role: papel.id }));
+                      setErros((prev) => ({ ...prev, matricula: undefined }));
+                    }}
+                    className={cx(
+                      'rounded-xl border px-3 py-2.5 text-left transition-colors duration-150',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900',
+                      ativo
+                        ? 'border-indigo-500 bg-indigo-50/70 ring-1 ring-indigo-500 dark:border-indigo-500 dark:bg-indigo-950/40'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:hover:bg-slate-800/60'
+                    )}
+                  >
+                    <span
+                      className={cx(
+                        'block text-xs font-semibold',
+                        ativo ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-800 dark:text-slate-200'
+                      )}
+                    >
+                      {papel.rotulo}
+                    </span>
+                    <span className="mt-0.5 block text-[11px] leading-snug text-slate-500 dark:text-slate-400">
+                      {papel.descricao}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
+          </fieldset>
+
+          <Field label="Nome completo" erro={erros.nome} obrigatorio>
+            {(props) => (
+              <Input
+                {...props}
+                type="text"
+                name="nome"
+                autoComplete="name"
+                placeholder="Como você aparece no sistema"
+                value={form.nome}
+                onChange={alterar}
+              />
+            )}
+          </Field>
+
+          <Field label="E-mail institucional" erro={erros.email} obrigatorio>
+            {(props) => (
+              <Input
+                {...props}
+                type="email"
+                name="email"
+                autoComplete="email"
+                placeholder="nome@escola.edu.br"
+                value={form.email}
+                onChange={alterar}
+              />
+            )}
+          </Field>
+
+          {form.role === 'ALUNO' && (
+            <Field label="Matrícula escolar" erro={erros.matricula} obrigatorio>
+              {(props) => (
+                <Input
+                  {...props}
+                  type="text"
+                  name="matricula"
+                  inputMode="numeric"
+                  placeholder="Ex.: 20260101"
+                  value={form.matricula}
+                  onChange={alterar}
+                />
+              )}
+            </Field>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">E-mail</label>
-            <input
-              type="email"
-              name="email"
-              required
-              placeholder="seuemail@escola.edu.br"
-              value={formData.email}
-              onChange={handleChange}
-              className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-sm text-slate-800 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Senha" erro={erros.senha} dica="Mínimo de 6 caracteres." obrigatorio>
+              {(props) => (
+                <div className="relative">
+                  <Input
+                    {...props}
+                    type={mostrarSenha ? 'text' : 'password'}
+                    name="senha"
+                    autoComplete="new-password"
+                    placeholder="Crie uma senha"
+                    value={form.senha}
+                    onChange={alterar}
+                    className={cx(props.className, 'pr-11')}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setMostrarSenha((v) => !v)}
+                    aria-label={mostrarSenha ? 'Ocultar senhas' : 'Mostrar senhas'}
+                    aria-pressed={mostrarSenha}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-200"
+                  >
+                    <IconeOlho aberto={mostrarSenha} className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </Field>
+
+            <Field label="Confirmar senha" erro={erros.confirmarSenha} obrigatorio>
+              {(props) => (
+                <Input
+                  {...props}
+                  type={mostrarSenha ? 'text' : 'password'}
+                  name="confirmarSenha"
+                  autoComplete="new-password"
+                  placeholder="Repita a senha"
+                  value={form.confirmarSenha}
+                  onChange={alterar}
+                />
+              )}
+            </Field>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Senha</label>
-            <div className="relative mt-1">
-              <input
-                type={mostrarSenha ? 'text' : 'password'}
-                name="senha"
-                required
-                placeholder="Crie uma senha forte"
-                value={formData.senha}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 pr-10 text-sm text-slate-800 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-              <button
-                type="button"
-                onClick={() => setMostrarSenha(!mostrarSenha)}
-                className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none"
-                tabIndex="-1"
-              >
-                {mostrarSenha ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                  </svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
-                  </svg>
-                )}
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Confirmar Senha</label>
-            <div className="relative mt-1">
-              <input
-                type={mostrarConfirmarSenha ? 'text' : 'password'}
-                name="confirmarSenha"
-                required
-                placeholder="Repita sua senha"
-                value={formData.confirmarSenha}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 pr-10 text-sm text-slate-800 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-              <button
-                type="button"
-                onClick={() => setMostrarConfirmarSenha(!mostrarConfirmarSenha)}
-                className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none"
-                tabIndex="-1"
-              >
-                {mostrarConfirmarSenha ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                  </svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
-                  </svg>
-                )}
-              </button>
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-lg bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 px-4 py-2.5 font-semibold text-white transition disabled:opacity-50"
-          >
-            {loading ? 'Cadastrando...' : 'Cadastrar Conta'}
-          </button>
+          <Button type="submit" tamanho="lg" carregando={carregando} className="w-full">
+            {carregando ? 'Cadastrando...' : 'Criar conta'}
+          </Button>
         </form>
 
         <p className="mt-6 text-center text-sm text-slate-600 dark:text-slate-400">
           Já possui conta?{' '}
-          <Link to="/login" className="font-semibold text-blue-600 dark:text-blue-400 hover:underline">
-            Voltar ao Login
+          <Link
+            to="/login"
+            className="font-semibold text-indigo-600 underline-offset-2 hover:underline dark:text-indigo-400"
+          >
+            Voltar ao login
           </Link>
         </p>
       </div>
-    </div>
+    </AuthLayout>
   );
 }
